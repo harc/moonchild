@@ -1,0 +1,30 @@
+{
+  "name": "moonchild",
+  "version": "0.1.0",
+  "author": {
+    "name": "Patrick Dubroy",
+    "email": "pdubroy@gmail.com",
+    "url": "http://dubroy.com"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "underscore": "*",
+    "estraverse": "~1.5.0",
+    "esprima": "~1.1.1"
+  },
+  "devDependencies": {
+    "tap": "~0.4.8",
+    "jshint": "~2.4.1",
+    "watchify": "~0.6.2",
+    "coffee-script": "~1.7.1",
+    "browserify": "^3.38.0"
+  },
+  "scripts": {
+    "build": "browserify --extension '.coffee' -c 'coffee -sc' -s Moonchild -o lib/moonchild-bundle.js moonchild.coffee",
+    "watch": "watchify  --extension '.coffee' -c 'coffee -sc' -s Moonchild -o lib/moonchild-bundle.js moonchild.coffee",
+    "test": "coffee -o lib *.coffee && tap test/*.js",
+    "dist": "npm run build && npm run test && npm run lint",
+    "jshint": "jshint *.js test/*.js",
+    "lint": "coffeelint --rules coffeelint.json *.coffee"
+  }
+}

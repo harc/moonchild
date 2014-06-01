@@ -1,0 +1,180 @@
+<style>
+  .mc-markdown {
+    color: #333;
+    font-family: Georgia;
+    font-size: 13px;
+    white-space: normal;
+  }
+  .mc-markdown ul {
+    margin: -0.5em 0 0 0;
+    padding-left: 1.5em;
+  }
+  .mc-markdown *:first-child {
+    margin-top: 0;
+  }
+  .mc-markdown *:last-child {
+    margin-bottom: 0;
+  }
+  .mc-markdown-block-comment {
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.1);
+    display: inline-block;
+    line-height: 1.5;
+    margin: 0 0 1em 0;
+    padding: 12px 8px;
+    width: 450px;
+  }
+  .mc-markdown-block-comment h1,
+  .mc-markdown-block-comment h2,
+  .mc-markdown-block-comment h3,
+  .mc-markdown-block-comment h4 {
+    font-family: Helvetica, Arial, sans-serif;
+    line-height: 1;
+  }
+  .mc-markdown-line-comment {
+    margin: 0;
+  }
+  .mc-markdown-line-comment > p {
+    color: #999;
+    display: inline;
+    font-style: italic;
+  }
+  .mc-markdown-line-comment > p::before {
+    content: '\2014';
+  }
+</style>
+<script>
+(function() {
+  var moonchild = Moonchild.registerExtension();
+
+  var markdownWalker = _.walk(function(node) {
+    return node.children;
+  });
+
+  // TODO: Find a better way to access extras, especially from within
+  // the same extension module.
+  // Maybe something like `var key = Moonchild.registerExtension();`, and
+  // then the extras can be accessed by that key?
+  function getMarkdownExtras(node) {
+    return moonchild.findExtras(node, function(o) {
+      return o.type == 'Markdown';
+    });
+  }
+
+  // --------------------------------------------------------------------------
+  // Parsing Markdown from comments
+
+  // Produces an AST for Markdown-formatted text.
+  // This is a hacky, lossy way of doing it, but it works for simple examples.
+  // It would be better to extend `marked` to produce JSON or something.
+  function parseAsMarkdown(text) {
+    // Generate HTML and insert it into the DOM...
+    var div = document.createElement('div');
+    div.innerHTML = marked(text);
+
+    // ...then walk the DOM and produce the parse tree.
+    return _.walk.reduce(div, function(memo, node) {
+      var result = {
+        type: node === div ? 'Markdown' : node.nodeName,
+      };
+      if (memo)
+        result.children = memo;
+      if (node.nodeName == '#text')
+        result.value = node.nodeValue;
+
+      return result;
+    });
+  }
+
+  moonchild.on('parse', function(ast, comments) {
+    // Build a Markdown parse tree for every non-metadata comment node.
+    comments.reject(isMetadata).each(function(node) {
+      moonchild.addExtras(node, parseAsMarkdown(node.value));
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // Linkifying
+
+  moonchild.on('parse', function(ast, comments) {
+    if (!options.linkify) return;
+
+    // Build a map of all the declarations in the file.
+    var declarations = {};
+    ast.each(function(node) {
+      var extras = moonchild.findExtras(node, function(o) {
+        return _.has(o, 'declarations');
+      });
+      if (extras) _.extend(declarations, extras.declarations);
+    });
+
+    comments.each(function(c) {
+      // Walk the tree and look for <code> nodes. If the node refers to a
+      // known declaration, replace the node with a link to the declaration.
+      var markdown = getMarkdownExtras(c);
+      if (!markdown)
+        return;
+      markdownWalker.reduce(markdown, function(memo, node) {
+        if (node.type == 'CODE') {
+          var ident = node.children[0].value;
+          var identNode = declarations[ident];
+          if (identNode) {
+            return {
+              type: 'A',
+              children: [node],
+              attrs: {
+                href: '#',
+                onclick: function() { selectNode(codeMirror, identNode); }
+              }
+            };
+          }
+        }
+        node.children = memo;
+        return node;
+      });
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // Displaying Markdown as HTML
+
+  var CommentWidget = Moonchild.Widget.extend({
+    create: function() {
+      return createElement('span');
+    },
+    render: function(el, node) {
+      var markdownAst = getMarkdownExtras(node);
+      el.className = 'mc-markdown mc-markdown-' + node.type.toLowerCase() + '-comment';
+      el.innerHTML = '';
+      markdownToDOM(markdownAst, el);
+    }
+  });
+
+  // Builds a DOM tree for a Markdown AST produced by `parseAsMarkdown`,
+  // and appends the elements to `parentEl`.
+  function markdownToDOM(markdownRoot, parentEl) {
+    return markdownWalker.reduce(markdownRoot, function(results, node) {
+      if (node.type == 'Markdown') {
+        for (var i = 0; i < results.length; i++) parentEl.appendChild(results[i]);
+      } else if (node.type == '#text') {
+        return document.createTextNode(node.value);
+      } else if (node.type) {
+        var el = document.createElement(node.type);
+        _.extend(el, node.attrs);
+        for (var i = 0; i < results.length; i++) el.appendChild(results[i]);
+        return el;
+      }
+    });
+  }
+
+  // TODO: Should the widget type should dictate its positioning?
+  moonchild.on('display', function(ast, comments) {
+    if (!options.markdown) return;
+
+    comments.reject(isMetadata).each(function(node) {
+      moonchild.addWidget(moonchild.REPLACE, node, CommentWidget);
+    });
+  });
+})();
+</script>

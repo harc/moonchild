@@ -1,0 +1,208 @@
+<!doctype html>
+<html>
+<head>
+  <title>Moonchild Live Parsing</title>
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+    }
+    #editorContainer {
+      position: absolute;
+      bottom: 30px;
+      left: 0;
+      right: 0;
+      top: 0;
+    }
+    #controls {
+      position: absolute;
+      bottom: 0;
+      height: 30px;
+      left: 0;
+      right: 0;
+    }
+    #controls > div {
+      -webkit-user-select: none;
+      background-color: #f5f5f5;
+      border: 1px solid #999;
+      border-radius: 3px;
+      box-shadow: 0 2px 0 #999;
+      color: #666;
+      cursor: default;
+      display: inline-block;
+      font-family: Menlo, courier, monospace;
+      font-size: 11px;
+      margin: 3px 0 0 4px;
+      padding: 3px 5px;
+    }
+    #controls > div:active,
+    #controls > div.on {
+      background-color: white;
+      box-shadow: none;
+      position: relative;
+      top: 2px;
+    }
+
+    .CodeMirror {
+      height: 100% !important;
+    }
+    .CodeMirror-scroll {
+      overflow-x: auto;
+      overflow-y: hidden;
+      padding: 6px;
+      padding-bottom: 30px;
+    }
+    .comment {
+      text-decoration: underline;
+    }
+    .comment:hover {
+      cursor: pointer;
+    }
+    .highlight {
+      background: #E5E1EA;
+    }
+    /* TODO: Encapsulate these styles somehow. */
+    .test-result {
+      background-color: #d9534f;
+      border-radius: 2px;
+      color: white;
+      display: inline-block;
+      font-family: Arial, sans-serif;
+      font-size: 12px;
+      margin: 2px;
+      padding: 2px 4px;
+    }
+    .test-result.ok {
+      background-color: #5cb85c;
+    }
+    .mc-metadata:hover {
+      cursor: pointer;
+      text-decoration: underline;
+    }
+
+    .arrow_box {
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+    	position: relative;
+    	background: #fff;
+    	border: 1px solid #ccc;
+    	z-index: 99;
+    }
+    .arrow_box:after, .arrow_box:before {
+    	right: 100%;
+    	top: 50%;
+    	border: solid transparent;
+    	content: " ";
+    	height: 0;
+    	width: 0;
+    	position: absolute;
+    	pointer-events: none;
+    }
+
+    .arrow_box:after {
+    	border-color: rgba(255, 255, 255, 0);
+    	border-right-color: #fff;
+    	border-width: 8px;
+    	margin-top: -8px;
+    }
+    .arrow_box:before {
+    	border-color: rgba(204, 204, 204, 0);
+    	border-right-color: #ccc;
+    	border-width: 9px;
+    	margin-top: -9px;
+    }
+
+    .mc-callout {
+      background-image: url(images/arrow.png);
+      box-sizing: border-box;
+      cursor: pointer;
+      display: inline-block;
+      height: 12px;
+      opacity: 0.5;
+      position: relative;
+      top: 1px;
+      width: 12px;
+    }
+
+    .mc-callout:hover {
+      opacity: 0.7
+    }
+
+    .mc-ellipsis {
+      background-color: #ddd;
+      border-radius: 0.6em;
+      color: white;
+      cursor: pointer;
+      font-size: 50%;
+      padding-left: 0.4em;
+      padding-right: 0.4em;
+      position: relative;
+      top: -1px;
+    }
+    .mc-ellipsis:hover {
+      background-color: #ccc;
+    }
+  </style>
+
+  <link rel="import" href="js-declarations.html">
+  <link rel="import" href="markdown-comments.html">
+</head>
+<body>
+  <div id="editorContainer">
+    <textarea>
+/*
+# Moonchild
+Moonchild brings source code to life.
+
+The code below show some examples of what you can do with Moonchild:
+- You can parse **Markdown** and render it as HTML
+- You can link to symbols like `getAnswer`
+- Are you not _impressed_?!?
+*/
+var answer = 42; // To life, the universe, and everything.
+
+var HIGHLIGHT_COLOR = '#beef00';
+var LINK_COLOR = 'CornflowerBlue'
+//^ { type: 'color' }
+
+/* Below is a widget that shows the status of your tests. Try editing the
+source code to make the test pass! */
+function getAnswer() {
+  return answer + 1;
+}
+
+//^ { testFor: 'getAnswer' }
+function test_getAnswer() {
+  assert.equal(getAnswer(), 42);
+}
+
+//^ { type: 'template', sampleData: { greeting: 'Hello', name: 'Dolly', message: 'How do you do?' } }
+var template = '<h1>{{ greeting }}, {{ name }}!</h1><p>{{ message }}</p>';
+    </textarea>
+  </div>
+  <div id="controls">
+    <div id="all">All</div>
+    <div id="colors">Colors</div>
+    <div id="markdown">Markdown</div>
+    <div id="linkify">Linkify</div>
+    <div id="collectTests">Tests</div>
+  </div>
+  <script src="deps/codemirror-3.22/lib/codemirror.js"></script>
+  <link rel="stylesheet" href="deps/codemirror-3.22/lib/codemirror.css">
+  <script src="deps/codemirror-3.22/mode/javascript/javascript.js"></script>
+
+  <script src="deps/assert.js"></script>
+  <script src="deps/marked.js"></script>
+  <script src="deps/underscore-min.js"></script>
+  <script src="deps/underscore-min.js"></script>
+  <script src="deps/underscore.collections.walk.js"></script>
+
+  <script src="../lib/moonchild-bundle.js"></script>
+  <script src="ui_helpers.js"></script>
+  <script src="liveParsing.js"></script>
+  <script src="collectTests.js"></script>
+  <script src="color-widget.js"></script>
+  <script src="templates.js"></script>
+
+  <script src="deps/html-imports.min.js"></script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+{
+  "indent": 2,
+  "camelcase": true,
+  "newcap": true,
+  "-W058": false,
+  "globals": {
+    "console": true,
+    "module": true
+  }
+}
