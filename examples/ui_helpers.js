@@ -97,8 +97,10 @@ function renderWidget(cm, node, pos, widgetClass) {
   if (!el) {
     el = widget.create();
     if (pos == 'replace') {
-      var mark = markNodeText(cm, node, { replacedWith: el });
-      marks.push(mark);
+      marks.push(markNodeText(cm, node, { replacedWith: el }));
+    } else if (pos == 'before' || pos == 'after') {
+      var loc = esLocToCm(pos == 'before' ? node.loc.start : node.loc.end);
+      marks.push(cm.setBookmark(loc, { widget: el, insertLeft: true }));
     } else {
       throw new Error('Not handled!')
     }
