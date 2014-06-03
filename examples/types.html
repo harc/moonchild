@@ -1,0 +1,31 @@
+<!--
+Placeholder for an extension that records runtime type information when
+executing tests, and displays that information in the editor.
+-->
+<script>
+(function() {
+  var moonchild = Moonchild.registerExtension();
+
+  var TypeAnnotationWidget = Moonchild.Widget.extend({
+    create: function() {
+      var el = document.createElement('span');
+      el.textContent = ': Number';
+      return el;
+    },
+    render: function(el, node) {
+    }
+  });
+
+  moonchild.on('display', function(ast) {
+    if (!options.types) return;
+
+    ast.where({ type: 'FunctionDeclaration' }).each(function(node) {
+      if (node.params.length > 0) {
+        moonchild.addWidget(
+            moonchild.AFTER, node.params[0], TypeAnnotationWidget);
+      }
+    });
+  });
+
+})();
+</script>
