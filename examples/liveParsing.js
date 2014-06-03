@@ -8,6 +8,8 @@ var markers = [];
 var moonchild = Moonchild.registerExtension();
 var options = {};
 
+var expandedMark;
+
 // Add a parse listener that attaches a unique ID to each node, and then marks
 // the text of each comment with its associated AST node.
 moonchild.on('parse', function(ast) {
@@ -33,9 +35,24 @@ moonchild.on('parse', function(ast) {
       ellipsis.addEventListener('click', function(e) {
         marker.clear();
         setCursorBeforeNode(codeMirror, node.metadata);
+        expandedMark = markNodeText(
+            codeMirror, node.metadata, { className: 'mc-ellipsis-expanded' });
       });
     }
   });
+});
+
+codeMirror.on('cursorActivity', function(cm) {
+  if (!expandedMark) return;
+
+  // If there is an expanded ellipsis and the cursor has now moved outside it,
+  // trigger a reparse in order to collapse the ellipsis.
+  var marks = cm.findMarksAt(cm.getCursor());
+  if (!_.findWhere(marks, { className: 'mc-ellipsis-expanded' })) {
+    expandedMark.clear();
+    expandedMark = null;
+    Moonchild.onChange(codeMirror);
+  }
 });
 
 function render(node) {
