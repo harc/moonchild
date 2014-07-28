@@ -46,7 +46,7 @@ Widget.extend = function(protoProps, staticProps) {
   // expando property on the DOM node.
   var originalCreate = child.prototype.create;
   child.prototype.create = function() {
-    var el = originalCreate.call();
+    var el = originalCreate.call(this);
     el._moonchildWidgetId = typeId;
     return el;
   };
@@ -84,12 +84,19 @@ function renderWidget(cm, node, pos, widgetClass) {
   var marks = cm.findMarks(esLocToCm(node.loc.start), esLocToCm(node.loc.end));
 
   // Extract the associated DOM nodes from the markers.
-  var markEls = _.compact(_.map(marks, function(m) {
+  var markEls = _.map(marks, function(m) {
     return m.replacedWith && m.replacedWith.childNodes[0];
-  }));
+  });
 
-  // Find nodes created by `widgetClass`.
-  var el = _.find(markEls, widgetClass.created);
+  var el, mark;
+  // Find the first mark whose element was created by `widgetClass`.
+  for (var i = 0; i < marks.length; ++i) {
+    if (widgetClass.created(markEls[i])) {
+      el = markEls[i];
+      mark = marks[i];
+      break;
+    }
+  }
 
   // Instantiate a new widget, and either create a new DOM node for it, or
   // render it using the previously existing node.
@@ -97,14 +104,16 @@ function renderWidget(cm, node, pos, widgetClass) {
   if (!el) {
     el = widget.create();
     if (pos == 'replace') {
-      marks.push(markNodeText(cm, node, { replacedWith: el }));
+      mark = markNodeText(cm, node, { replacedWith: el });
     } else if (pos == 'before' || pos == 'after') {
       var loc = esLocToCm(pos == 'before' ? node.loc.start : node.loc.end);
-      marks.push(cm.setBookmark(loc, { widget: el, insertLeft: true }));
+      mark = cm.setBookmark(loc, { widget: el, insertLeft: true });
     } else {
       throw new Error('Not handled!')
     }
+    marks.push(mark);
   }
+  widget.changed = function() { mark.changed(); }
   widget.render(el, node);
   _.invoke(marks, 'changed');
 }

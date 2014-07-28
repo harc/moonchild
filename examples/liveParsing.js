@@ -43,15 +43,15 @@ moonchild.on('parse', function(ast) {
 });
 
 codeMirror.on('cursorActivity', function(cm) {
-  if (!expandedMark) return;
-
-  // If there is an expanded ellipsis and the cursor has now moved outside it,
-  // trigger a reparse in order to collapse the ellipsis.
-  var marks = cm.findMarksAt(cm.getCursor());
-  if (!_.findWhere(marks, { className: 'mc-ellipsis-expanded' })) {
-    expandedMark.clear();
-    expandedMark = null;
-    Moonchild.onChange(codeMirror);
+  if (expandedMark) {
+    // If there is an expanded ellipsis and the cursor has now moved outside it,
+    // trigger a reparse in order to collapse the ellipsis.
+    var marks = cm.findMarksAt(cm.getCursor());
+    if (!_.findWhere(marks, { className: 'mc-ellipsis-expanded' })) {
+      expandedMark.clear();
+      expandedMark = null;
+      Moonchild.onChange(codeMirror);
+    }
   }
 });
 
