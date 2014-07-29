@@ -65,7 +65,7 @@ QUnit.test('basic insertion', function(t) {
 QUnit.test('deletion', function(t) {
   var m = new whizzy.Model;
   m.insert('hello');
-  t.equal(m.getCursor(), 5);
+  m.setCursor(5);
   m.delete();
   t.equal(m.getValue(), 'hello');
 
@@ -80,8 +80,28 @@ QUnit.test('deletion', function(t) {
   t.equal(m.getValue(), 'ell');
 
   m.setCursor(1);
-  m.delete(2);
+  m.delete();
+  t.equal(m.getValue(), 'el');
+});
+
+QUnit.test('delection with selections', function(t) {
+  var m = new whizzy.Model;
+  m.insert('e');
+
+  m.setSelection(0, 0);
+  m.deleteBackwards();
   t.equal(m.getValue(), 'e');
+
+  m.insert('whee');
+  t.equal(m.getValue(), 'wheee');
+
+  m.setSelection(5, 5);
+  m.delete();
+  t.equal(m.getValue(), 'wheee');
+
+  m.setSelection(1, 4);
+  m.deleteBackwards();
+  t.equal(m.getValue(), 'we');
 });
 
 QUnit.test('model changes', function(t) {
@@ -144,11 +164,13 @@ QUnit.test('model affects view', function(t) {
   whizzy.connect(el, m);
 
   m.on('change', function() {
+    var val = m.getValue();
     el.textContent = m.getValue();
     setCursor(el.firstChild, m.getCursor());
   });
   m.insert('yippee')
   t.equal(el.textContent, m.getValue());
-  m.deleteBackwards(3);
+
+  m.deleteBackwards();
   t.equal(el.textContent, m.getValue());
 });
