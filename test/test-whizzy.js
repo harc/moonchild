@@ -49,7 +49,7 @@ function setCursor(el, offset, callback) {
 }
 
 QUnit.test('basic insertion', function(t) {
-  var m = new whizzy.Model;
+  var m = new whizzy.TextModel;
   t.equal(0, m.getCursor());
 
   m.insert('foo');
@@ -68,7 +68,7 @@ QUnit.test('basic insertion', function(t) {
 });
 
 QUnit.test('deletion', function(t) {
-  var m = new whizzy.Model;
+  var m = new whizzy.TextModel;
   m.insert('hello');
   m.setCursor(5);
   m.delete();
@@ -90,7 +90,7 @@ QUnit.test('deletion', function(t) {
 });
 
 QUnit.test('delection with selections', function(t) {
-  var m = new whizzy.Model;
+  var m = new whizzy.TextModel;
   m.insert('e');
 
   m.setSelection(0, 0);
@@ -110,7 +110,7 @@ QUnit.test('delection with selections', function(t) {
 });
 
 QUnit.test('insertion with selections', function(t) {
-  var m = new whizzy.Model;
+  var m = new whizzy.TextModel;
   m.insert('foo');
 
   m.setSelection(1, 3);
@@ -129,7 +129,7 @@ QUnit.test('insertion with selections', function(t) {
 });
 
 QUnit.test('model changes', function(t) {
-  var m = new whizzy.Model;
+  var m = new whizzy.TextModel;
 
   var count = 0;
   function incCount() { ++count; };
@@ -165,7 +165,7 @@ QUnit.module("DOM Tests", {
 });
 QUnit.asyncTest('view affects model', function(t) {
   var el = $('#testEl');
-  var m = new whizzy.Model;
+  var m = new whizzy.TextModel;
   whizzy.connect(el, m);
   simulate(el, 'hiya');
   t.equal(m.getValue(), 'hiya');
@@ -185,7 +185,7 @@ QUnit.asyncTest('view affects model', function(t) {
 
 QUnit.test('model affects view', function(t) {
   var el = $('#testEl');
-  var m = new whizzy.Model;
+  var m = new whizzy.TextModel;
   whizzy.connect(el, m);
 
   m.on('change', function() {
