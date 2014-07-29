@@ -12,9 +12,9 @@ function $(sel) {
 }
 
 // Simulates a keypress for `char` inside the given element.
-function simulateKeypress(el, char) {
+function simulateKeyEvent(el, keyCode, type) {
   var e = document.createEvent('KeyboardEvent');
-  var keyCode = e.keyCodeVal = char.charCodeAt(0);
+  e.keyCodeVal = keyCode;
 
   function getKeyCode() {
     return this.keyCodeVal;
@@ -22,14 +22,14 @@ function simulateKeypress(el, char) {
 
   Object.defineProperty(e, 'keyCode', { get: getKeyCode });
   Object.defineProperty(e, 'which', { get: getKeyCode });
-  e.initKeyboardEvent('keypress', true, true, document.defaultView, false, false, false, false, keyCode, keyCode);
+  e.initKeyboardEvent(type, true, true, document.defaultView, false, false, false, false, keyCode, keyCode);
   el.dispatchEvent(e);
 }
 
 // Simulates individual keypresses for each character in `str`.
 function simulate(el, str) {
   for (var i = 0; i < str.length; ++i) {
-    simulateKeypress(el, str[i]);
+    simulateKeyEvent(el, str.charCodeAt(i), 'keypress');
   }
 }
 
@@ -43,8 +43,17 @@ function setSelection(el, anchorOffset, cursorOffset) {
   sel.addRange(range);
 }
 
-function setCursor(el, offset) {
+function setCursor(el, offset, callback) {
   setSelection(el, offset, offset);
+
+  // Cursor changes affect the model asynchronously. If a callback is passed,
+  // invoke it after a timeout.
+  if (callback) {
+    setTimeout(function() {
+      QUnit.start();
+      callback();
+    }, 1);
+  }
 }
 
 QUnit.test('basic insertion', function(t) {
@@ -171,14 +180,15 @@ QUnit.asyncTest('view affects model', function(t) {
   t.equal(m.getCursor(), 4);
 
   // Changing the cursor affects the model asynchronously, so use a timeout.
-  setCursor(el, 0);
-  setTimeout(function() {
-    QUnit.start();
+  setCursor(el, 0, function() {
     t.equal(m.getCursor(), 0);
 
     simulate(el, 'blah');
     t.equal(m.getValue(), 'blahhiya');
-  }, 1);
+
+    simulateKeyEvent(el, 13, 'keydown');
+    t.equal(m.getValue(), 'blah\nhiya');
+  });
 });
 
 QUnit.test('model affects view', function(t) {
