@@ -33,14 +33,18 @@ function simulate(el, str) {
   }
 }
 
-function setCursor(el, offset) {
+function setSelection(el, anchorOffset, cursorOffset) {
   var range = document.createRange();
-  range.setStart(el, offset);
-  range.setEnd(el, offset);
+  range.setStart(el, anchorOffset);
+  range.setEnd(el, cursorOffset);
 
   var sel = window.getSelection();
   sel.removeAllRanges();
   sel.addRange(range);
+}
+
+function setCursor(el, offset) {
+  setSelection(el, offset, offset);
 }
 
 QUnit.test('basic insertion', function(t) {
@@ -102,6 +106,25 @@ QUnit.test('delection with selections', function(t) {
   m.setSelection(1, 4);
   m.deleteBackwards();
   t.equal(m.getValue(), 'we');
+});
+
+QUnit.test('insertion with selections', function(t) {
+  var m = new whizzy.Model;
+  m.insert('foo');
+
+  m.setSelection(1, 3);
+  m.insert('oob');
+  t.equal(m.getValue(), 'foob');
+
+  m.insert('ar')
+  t.equal(m.getValue(), 'foobar');
+
+  // Insertion with a selection should only trigger one change event.
+  var count = 0;
+  m.on('change', function() { ++count; });
+  m.setSelection(0, 6);
+  m.insert('blah');
+  t.equal(count, 1);
 });
 
 QUnit.test('model changes', function(t) {
@@ -166,7 +189,8 @@ QUnit.test('model affects view', function(t) {
   m.on('change', function() {
     var val = m.getValue();
     el.textContent = m.getValue();
-    setCursor(el.firstChild, m.getCursor());
+    var sel = m.getSelection();
+    setSelection(el.firstChild || el, sel[0], sel[1]);
   });
   m.insert('yippee')
   t.equal(el.textContent, m.getValue());
