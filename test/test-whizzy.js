@@ -186,10 +186,10 @@ QUnit.test('model affects view', function(t) {
   var m = new whizzy.Model;
   whizzy.connect(el, m);
 
+  // TODO: Move this into whizzy.
   m.on('change', function() {
-    var val = m.getValue();
-    el.textContent = m.getValue();
     var sel = m.getSelection();
+    el.textContent = m.getValue();
     setSelection(el.firstChild || el, sel[0], sel[1]);
   });
   m.insert('yippee')
