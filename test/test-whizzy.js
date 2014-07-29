@@ -84,21 +84,71 @@ QUnit.test('deletion', function(t) {
   t.equal(m.getValue(), 'e');
 });
 
-QUnit.asyncTest('view affects model', function(t) {
-  var div = $('body').appendChild(createElement('div'));
+QUnit.test('model changes', function(t) {
   var m = new whizzy.Model;
-  whizzy.connect(div, m);
-  simulate(div, 'hiya');
+
+  var count = 0;
+  function incCount() { ++count; };
+
+  m.on('change', incCount);
+  m.insert('hi');
+  t.equal(count, 1);
+
+  m.on('change', incCount);
+  m.insert('ho');
+  t.equal(count, 2);
+
+  var count2 = 0;
+  m.on('change', function() { ++count2; });
+  m.insert('hi');
+  t.equal(count, 3)
+  t.equal(count2, 1);
+
+  m.off('change', incCount);
+  m.insert('hi');
+  t.equal(count, 3);
+  t.equal(count2, 2);
+});
+
+QUnit.module("DOM Tests", {
+  setup: function() {
+    var el = $('body').appendChild(createElement('div'));
+    el.id = 'testEl';
+  },
+  teardown: function() {
+//    $('#testEl').parentNode.removeChild($('#testEl'));
+  }
+});
+QUnit.asyncTest('view affects model', function(t) {
+  var el = $('#testEl');
+  var m = new whizzy.Model;
+  whizzy.connect(el, m);
+  simulate(el, 'hiya');
   t.equal(m.getValue(), 'hiya');
   t.equal(m.getCursor(), 4);
 
   // Changing the cursor affects the model asynchronously, so use a timeout.
-  setCursor(div, 0);
+  setCursor(el, 0);
   setTimeout(function() {
     QUnit.start();
     t.equal(m.getCursor(), 0);
 
-    simulate(div, 'blah');
+    simulate(el, 'blah');
     t.equal(m.getValue(), 'blahhiya');
   }, 1);
+});
+
+QUnit.test('model affects view', function(t) {
+  var el = $('#testEl');
+  var m = new whizzy.Model;
+  whizzy.connect(el, m);
+
+  m.on('change', function() {
+    el.textContent = m.getValue();
+    setCursor(el.firstChild, m.getCursor());
+  });
+  m.insert('yippee')
+  t.equal(el.textContent, m.getValue());
+  m.deleteBackwards(3);
+  t.equal(el.textContent, m.getValue());
 });
