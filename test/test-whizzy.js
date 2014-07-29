@@ -33,15 +33,7 @@ function simulate(el, str) {
   }
 }
 
-function setSelection(el, anchorOffset, cursorOffset) {
-  var range = document.createRange();
-  range.setStart(el, anchorOffset);
-  range.setEnd(el, cursorOffset);
-
-  var sel = window.getSelection();
-  sel.removeAllRanges();
-  sel.addRange(range);
-}
+var setSelection = whizzy.setSelection;
 
 function setCursor(el, offset, callback) {
   setSelection(el, offset, offset);
@@ -196,11 +188,9 @@ QUnit.test('model affects view', function(t) {
   var m = new whizzy.Model;
   whizzy.connect(el, m);
 
-  // TODO: Move this into whizzy.
   m.on('change', function() {
-    var sel = m.getSelection();
     el.textContent = m.getValue();
-    setSelection(el.firstChild || el, sel[0], sel[1]);
+    m.restoreSelection(el);
   });
   m.insert('yippee')
   t.equal(el.textContent, m.getValue());
