@@ -63,7 +63,11 @@ var withTestDiv = {
 
 QUnit.module('domUtils', withTestDiv);
 QUnit.test('nodeForOffset', function(t) {
-  var nodeForOffset = utils.nodeForOffset;
+  function nodeForOffset(startNode, offset) {
+    var result = utils.findNestedOffset(startNode, offset);
+    return result ? result.node : null;
+  }
+
   var el = $('#testEl');
   t.equal(nodeForOffset(el, 0), el);
 
