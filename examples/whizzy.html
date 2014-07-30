@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Whizzy</title>
+  <style>
+    [contenteditable] {
+      border: 1px solid #ddd;
+      min-height: 100px;
+      outline: none;
+      width: 500px;
+    }
+  </style>
+</head>
+<body>
+  <div></div>
+  <!-- Run 'node_modules/.bin/beefy lib/whizzy.js' before opening this file. -->
+  <script src="http://127.0.0.1:9966/lib/whizzy.js"></script>
+  <script>
+    var el = document.querySelector('div');
+    var view = new whizzy.ViewModel(el);
+    var m = view.textModel;
+
+    function uppercaseParts() {
+      var parts = m.getValue().split(' ');
+      var upperParts = parts.slice(0, -1).map(function(x) { return x.toUpperCase(); });
+      upperParts.push(parts[parts.length - 1]);
+      el.textContent = upperParts.join(' ');
+      m.restoreSelection(el);
+    }
+
+//    m.on('change', uppercaseParts);
+    m.on('change', function foo() {
+      el.textContent = m.getValue();
+      if (m.getValue().length > 5)
+        view.wrapText(0, 5, 'b');
+      console.log(m.getValue());
+      view.restoreSelection();
+    });
+  </script>
+</body>
+</html>
