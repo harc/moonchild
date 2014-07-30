@@ -1,3 +1,6 @@
+var utils = require('../lib/domUtils'),
+    whizzy = require('../lib/whizzy');
+
 function createElement(tagName, props) {
   var el = document.createElement(tagName);
   for (var k in props) {
@@ -47,6 +50,40 @@ function setCursor(el, offset, callback) {
     }, 1);
   }
 }
+
+var withTestDiv = {
+  setup: function() {
+    var el = $('body').appendChild(createElement('div'));
+    el.id = 'testEl';
+  },
+  teardown: function() {
+    $('#testEl').parentNode.removeChild($('#testEl'));
+  }
+};
+
+QUnit.module('domUtils', withTestDiv);
+QUnit.test('nodeForOffset', function(t) {
+  var nodeForOffset = utils.nodeForOffset;
+  var el = $('#testEl');
+  t.equal(nodeForOffset(el, 0), el);
+
+  el.textContent = 'foo';
+  t.equal(nodeForOffset(el, 1), el.firstChild);
+  t.equal(nodeForOffset(el, 3), el.firstChild);
+
+  el.innerHTML = 'a<b>cc</b>dd';
+  t.equal(nodeForOffset(el, 0), el.firstChild);
+  t.equal(nodeForOffset(el, 5), el.lastChild);
+  t.equal(nodeForOffset(el, 2), el.childNodes[1].firstChild);
+
+  el.innerHTML = 'a<b>c</b>';
+  t.equal(nodeForOffset(el, 1), el.firstChild);
+  t.equal(nodeForOffset(el, 2), el.childNodes[1].firstChild);
+
+  t.ok(true);
+});
+
+QUnit.module('whizzy');
 
 QUnit.test('basic insertion', function(t) {
   var m = new whizzy.TextModel;
@@ -154,19 +191,12 @@ QUnit.test('model changes', function(t) {
   t.equal(count2, 2);
 });
 
-QUnit.module("DOM Tests", {
-  setup: function() {
-    var el = $('body').appendChild(createElement('div'));
-    el.id = 'testEl';
-  },
-  teardown: function() {
-//    $('#testEl').parentNode.removeChild($('#testEl'));
-  }
-});
+QUnit.module("DOM Tests", withTestDiv);
 QUnit.asyncTest('view affects model', function(t) {
   var el = $('#testEl');
-  var m = new whizzy.TextModel;
-  whizzy.connect(el, m);
+  var view = new whizzy.ViewModel(el);
+  var m = view.textModel;
+
   simulate(el, 'hiya');
   t.equal(m.getValue(), 'hiya');
   t.equal(m.getCursor(), 4);
@@ -185,8 +215,8 @@ QUnit.asyncTest('view affects model', function(t) {
 
 QUnit.test('model affects view', function(t) {
   var el = $('#testEl');
-  var m = new whizzy.TextModel;
-  whizzy.connect(el, m);
+  var view = new whizzy.ViewModel(el);
+  var m = view.textModel;
 
   m.on('change', function() {
     el.textContent = m.getValue();
