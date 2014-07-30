@@ -27,6 +27,8 @@
     "build": "browserify --extension '.coffee' -c 'coffee -sc' -s Moonchild -o lib/moonchild-bundle.js moonchild.coffee",
     "watch": "watchify  --extension '.coffee' -c 'coffee -sc' -s Moonchild -o lib/moonchild-bundle.js moonchild.coffee",
     "test": "coffee -o lib *.coffee && tap test/*.js",
+    "whizzy-demo": "open examples/whizzy.html; beefy lib/whizzy.js -- -s whizzy",
+    "whizzy-tests": "open test/test-whizzy.html; beefy test/test-whizzy.js",
     "serve": "http-server -o",
     "dist": "npm run build && npm run test && npm run lint",
     "jshint": "jshint *.js test/*.js",
