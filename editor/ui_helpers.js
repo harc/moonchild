@@ -170,10 +170,8 @@ function setCursorBeforeNode(cm, node) {
 }
 
 function selectNode(cm, node) {
-  cm.setSelection(esLocToCm(node.loc.start),
-                  esLocToCm(node.loc.end));
-  cm.scrollIntoView();
-  cm.focus();
+  highlightLocation(esLocToCm(node.loc.start),
+                    esLocToCm(node.loc.end));
 }
 
 function highlightLocation(cm, startLoc, endLoc) {
