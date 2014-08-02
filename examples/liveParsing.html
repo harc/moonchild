@@ -157,7 +157,7 @@ Moonchild brings source code to life.
 
 The code below show some examples of what you can do with Moonchild:
 - You can parse **Markdown** and render it as HTML
-- You can link to symbols like `getAnswer`
+- You can link to symbols like `addOne`
 - Are you not _impressed_?!?
 */
 var answer = 42; // To life, the universe, and everything.
@@ -185,7 +185,6 @@ var template = '<h1>{{ greeting }}, {{ name }}!</h1><p>{{ message }}</p>';
     <div id="markdown">Markdown</div>
     <div id="linkify">Linkify</div>
     <div id="collectTests">Tests</div>
-    <div id="types">Types</div>
   </div>
   <script src="deps/codemirror-3.22/lib/codemirror.js"></script>
   <link rel="stylesheet" href="deps/codemirror-3.22/lib/codemirror.css">
@@ -200,13 +199,15 @@ var template = '<h1>{{ greeting }}, {{ name }}!</h1><p>{{ message }}</p>';
   <script src="../lib/moonchild-bundle.js"></script>
   <script src="ui_helpers.js"></script>
   <script src="liveParsing.js"></script>
-  <script src="collectTests.js"></script>
-  <script src="color-widget.js"></script>
-  <script src="templates.js"></script>
 
-  <link rel="import" href="js-declarations.html">
-  <link rel="import" href="markdown-comments.html">
-  <link rel="import" href="types.html">
+  <!-- Plugins -->
+  <script src="plugins/collectTests.js"></script>
+  <script src="plugins/color-widget.js"></script>
+  <script src="plugins/templates.js"></script>
+  <link rel="import" href="plugins/js-declarations.html">
+  <link rel="import" href="plugins/markdown-comments.html">
+
+  <!-- Polyfill for HTML imports -->
   <script src="deps/html-imports.min.js"></script>
 </body>
 </html>
