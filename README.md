@@ -14,6 +14,12 @@ npm install
 
 Run `npm start` to start the server required for the editor demo. To open the editor, open the URL printed in the console (e.g. http://localhost:8080/editor).
 
+Use the buttons along the bottom of the editor to enable and disable the plugins:
+
+![Toolbar buttons](https://raw.githubusercontent.com/pdubroy/moonchild/master/editor/images/toolbar.png)
+
+(This UI is just for demo purposes -- in real use, you hopefully wouldn't have to ever explicitly turn plugins on and off.)
+
 ## Organization
 
 `metadata.coffee` is the source code for the modified JavaScript parser, which parses metadata embedded in comments and attaches it to the appropriate AST nodes.
