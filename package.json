@@ -2,11 +2,7 @@
   "name": "moonchild",
   "version": "0.1.0",
   "description": "Moonchild brings source code to life",
-  "author": {
-    "name": "Patrick Dubroy",
-    "email": "pdubroy@gmail.com",
-    "url": "http://dubroy.com"
-  },
+  "author": "Patrick Dubroy <pdubroy@gmail.com> (http://dubroy.com)",
   "license": "MIT",
   "dependencies": {
     "esprima": "~1.1.1",
@@ -32,6 +28,18 @@
     "serve": "http-server -o",
     "dist": "npm run build && npm run test && npm run lint",
     "jshint": "jshint *.js test/*.js",
-    "lint": "coffeelint --rules coffeelint.json *.coffee"
-  }
+    "lint": "coffeelint --rules coffeelint.json *.coffee",
+    "start": "node server.js"
+  },
+  "directories": {
+    "test": "test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pdubroy/moonchild"
+  },
+  "bugs": {
+    "url": "https://github.com/pdubroy/moonchild/issues"
+  },
+  "homepage": "https://github.com/pdubroy/moonchild"
 }

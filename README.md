@@ -42,7 +42,7 @@ moonchild.on('parse', function(ast, comments) {
 ```
 
 A plugin that modifies the presentation should also do something like this:
-```
+```js
 moonchild.on('display', function(ast, comments) {
   // Walk the AST, and change the source code presentation by calling
   // `moonchild.addWidget`.
