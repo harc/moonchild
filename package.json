@@ -18,8 +18,8 @@
     "browserify": "^3.38.0",
     "coffee-script": "~1.7.1",
     "coffeelint": "^1.5.1",
-    "http-server": "^0.6.1",
     "jshint": "~2.4.1",
+    "node-static": "^0.7.4",
     "tap": "~0.4.8",
     "watchify": "~0.6.2"
   },
