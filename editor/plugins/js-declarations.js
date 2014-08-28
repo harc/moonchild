@@ -1,7 +1,7 @@
 // An extension that walks JavaScript ASTs, and for all nodes that
 // introduce a new lexical scope, annotates the node with information about
 // all declarations in that scope.
-Moonchild.registerExtension('javascript:declarations', function(moonchild) {
+Moonchild.registerExtension('js-declarations', function(moonchild) {
   // TODO: Make this extension depend on 'javascript'.
   moonchild.on('parse', function(ast) {
     var scopes = [];

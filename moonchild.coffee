@@ -8,6 +8,7 @@ globalHooks = {}
 globalExtensions = {}
 
 widgetExpander = expanders.createExpander('displayWidget')
+exportsExpander = expanders.createExpander('extensionId')
 
 # Encapsulates the extension API that is provided to a single extension.
 class Extension
@@ -16,8 +17,6 @@ class Extension
       throw new Error("An extension named '#{ id }' is already registered")
 
     @_id = id || _.uniqueId('ext-')
-    globalExtensions[@_id] = this
-
     @_hooks = {}
     @_expander = expanders.createExpander('extras')
     @on = _.partial(addHook, @_id, globalHooks)
@@ -40,7 +39,13 @@ class Extension
     @_expander.set node, 'extras', data
 
   getExtras: (node, ext) ->
-    exp = ext?._expander || @_expander
+    # If `ext` is defined, it's the exports from an extension. Use that
+    # object to find the actual extension.
+    exp = if ext
+      id = exportsExpander.get(ext, 'extensionId')
+      globalExtensions[id]._expander
+    else
+      @_expander
     exp.get(node, 'extras')
 
   # Constants for the `pos` argument to `addWidget`.
@@ -61,10 +66,30 @@ hooksDo = (hook, iter) ->
   _.each hook, (hookFns, id) ->
     _.each hookFns, (fn) -> iter(fn, id)
 
-registerExtension = (id, initFn) ->
-  ext = new Extension(id, initFn)
-  initFn?.call(null, ext)
-  return ext
+initializeExtension = (ext, deps, initFn) ->
+  result = initFn?.apply(null, [ext].concat(deps))
+  if result?
+    if _.isObject(result) then return result
+    throw new TypeError('Invalid export from extension (must be an object)')
+  {}
+
+registerExtension = (id, deps, initFn) ->
+  # Allow extensions with no explicit dependencies.
+  if !_.isArray(deps)
+    initFn = deps
+    deps = []
+
+  deps = deps.map (name) ->
+    if not name of globalExtensions
+      throw new Error "Unmet dependency #{name}"
+    return globalExtensions[name].exports
+
+  ext = new Extension(id)
+  ext.exports = initializeExtension(ext, deps, initFn)
+  # Allow the exports object can be traced back to the extension itself.
+  exportsExpander.set(ext.exports, 'extensionId', ext._id)
+
+  globalExtensions[ext._id] = ext
 
 parse = (hooks, source) ->
   tree = parser.parse(source)
@@ -112,7 +137,6 @@ onChange = (cm, changeObj) ->
 
 module.exports = {
   createEditor,
-  extensionsTempHack: globalExtensions,
   on: _.partial(addHook, null, globalHooks)
   onChange,  # TODO: Get rid of this.
   parse,

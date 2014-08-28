@@ -46,14 +46,10 @@
   }
 </style>
 <script>
-var markdownWalker = _.walk(function(node) {
-  return node.children;
-});
-
-// Keep a reference to the markdown extension for the use of the linkify
-// extension below. This won't be necessary once proper dependencies are
-// implemented.
-var markdownExt = Moonchild.registerExtension('markdown', function(moonchild) {
+Moonchild.registerExtension('markdown', function(moonchild) {
+  var markdownWalker = _.walk(function(node) {
+    return node.children;
+  });
 
   // Parsing Markdown from comments
   // ------------------------------
@@ -127,34 +123,36 @@ var markdownExt = Moonchild.registerExtension('markdown', function(moonchild) {
       moonchild.addWidget(moonchild.REPLACE, node, CommentWidget);
     });
   });
+
+  return { walker: markdownWalker };
 });
 
-Moonchild.registerExtension('markdown:linkify', function(moonchild) {
-  // Linkifying Code Sections
-  // ------------------------
-
+// Linkifying Code Sections
+// ------------------------
+Moonchild.registerExtension(
+    'markdown-linkify',
+    ['markdown', 'js-declarations'],
+    function(moonchild, markdown, jsDeclarations) {
   moonchild.on('parse', function(ast, comments) {
     if (!options.linkify) return;
 
     // Build a map of all the declarations in the file.
     var declarations = {};
     ast.each(function(node) {
-      // TODO: Stop accessing this directly once dependencies are implemented.
-      declarationsExt = Moonchild.extensionsTempHack['javascript:declarations']
-      var extras = moonchild.getExtras(node, declarationsExt);
+      var extras = moonchild.getExtras(node, jsDeclarations);
       if (extras) _.extend(declarations, extras);
     });
 
     comments.each(function(c) {
       // Look for nodes that have Markdown extras.
       // TODO: Add a built-in traversal to do stuff like this.
-      var markdown = moonchild.getExtras(c, markdownExt);
-      if (!markdown)
+      var extras = moonchild.getExtras(c, markdown);
+      if (!extras)
         return;
 
       // Walk the tree and look for <code> nodes. If the node refers to a
       // known declaration, replace the node with a link to the declaration.
-      markdownWalker.reduce(markdown, function(memo, node) {
+      markdown.walker.reduce(extras, function(memo, node) {
         if (node.type == 'CODE') {
           var ident = node.children[0].value;
           var identNode = declarations[ident];
