@@ -46,26 +46,17 @@
   }
 </style>
 <script>
-(function() {
-  var moonchild = Moonchild.registerExtension();
+var markdownWalker = _.walk(function(node) {
+  return node.children;
+});
 
-  var markdownWalker = _.walk(function(node) {
-    return node.children;
-  });
+// Keep a reference to the markdown extension for the use of the linkify
+// extension below. This won't be necessary once proper dependencies are
+// implemented.
+var markdownExt = Moonchild.registerExtension('markdown', function(moonchild) {
 
-  // TODO: Find a better way to access extras, especially from within
-  // the same extension module.
-  // Maybe something like `var key = Moonchild.registerExtension();`, and
-  // then the extras can be accessed by that key?
-  function getMarkdownExtras(node) {
-    return moonchild.findExtras(node, function(o) {
-      return o.type == 'Markdown';
-    });
-  }
-
-  // ------------------------------------------------------------------
   // Parsing Markdown from comments
-  // ------------------------------------------------------------------
+  // ------------------------------
 
   // Produces an AST for Markdown-formatted text.
   // This is a hacky, lossy way of doing it, but it works for simple examples.
@@ -92,63 +83,19 @@
   moonchild.on('parse', function(ast, comments) {
     // Build a Markdown parse tree for every non-metadata comment node.
     comments.reject(isMetadata).each(function(node) {
-      moonchild.addExtras(node, parseAsMarkdown(node.value));
+      moonchild.setExtras(node, parseAsMarkdown(node.value));
     });
   });
 
-  // ------------------------------------------------------------------
-  // Linkifying
-  // ------------------------------------------------------------------
-
-  moonchild.on('parse', function(ast, comments) {
-    if (!options.linkify) return;
-
-    // Build a map of all the declarations in the file.
-    var declarations = {};
-    ast.each(function(node) {
-      var extras = moonchild.findExtras(node, function(o) {
-        return _.has(o, 'declarations');
-      });
-      if (extras) _.extend(declarations, extras.declarations);
-    });
-
-    comments.each(function(c) {
-      // Walk the tree and look for <code> nodes. If the node refers to a
-      // known declaration, replace the node with a link to the declaration.
-      var markdown = getMarkdownExtras(c);
-      if (!markdown)
-        return;
-      markdownWalker.reduce(markdown, function(memo, node) {
-        if (node.type == 'CODE') {
-          var ident = node.children[0].value;
-          var identNode = declarations[ident];
-          if (identNode) {
-            return {
-              type: 'A',
-              children: [node],
-              attrs: {
-                href: '#',
-                onclick: function() { selectNode(codeMirror, identNode); }
-              }
-            };
-          }
-        }
-        node.children = memo;
-        return node;
-      });
-    });
-  });
-
-  // ------------------------------------------------------------------
   // Displaying Markdown as HTML
-  // ------------------------------------------------------------------
+  // ---------------------------
 
   var CommentWidget = Moonchild.Widget.extend({
     create: function() {
       return createElement('span');
     },
     render: function(el, node) {
-      var markdownAst = getMarkdownExtras(node);
+      var markdownAst = moonchild.getExtras(node);
       el.className = 'mc-markdown mc-markdown-' + node.type.toLowerCase() + '-comment';
       el.innerHTML = '';
       markdownToDOM(markdownAst, el);
@@ -180,5 +127,52 @@
       moonchild.addWidget(moonchild.REPLACE, node, CommentWidget);
     });
   });
-})();
+});
+
+Moonchild.registerExtension('markdown:linkify', function(moonchild) {
+  // Linkifying Code Sections
+  // ------------------------
+
+  moonchild.on('parse', function(ast, comments) {
+    if (!options.linkify) return;
+
+    // Build a map of all the declarations in the file.
+    var declarations = {};
+    ast.each(function(node) {
+      // TODO: Stop accessing this directly once dependencies are implemented.
+      declarationsExt = Moonchild.extensionsTempHack['javascript:declarations']
+      var extras = moonchild.getExtras(node, declarationsExt);
+      if (extras) _.extend(declarations, extras);
+    });
+
+    comments.each(function(c) {
+      // Look for nodes that have Markdown extras.
+      // TODO: Add a built-in traversal to do stuff like this.
+      var markdown = moonchild.getExtras(c, markdownExt);
+      if (!markdown)
+        return;
+
+      // Walk the tree and look for <code> nodes. If the node refers to a
+      // known declaration, replace the node with a link to the declaration.
+      markdownWalker.reduce(markdown, function(memo, node) {
+        if (node.type == 'CODE') {
+          var ident = node.children[0].value;
+          var identNode = declarations[ident];
+          if (identNode) {
+            return {
+              type: 'A',
+              children: [node],
+              attrs: {
+                href: '#',
+                onclick: function() { selectNode(codeMirror, identNode); }
+              }
+            };
+          }
+        }
+        node.children = memo;
+        return node;
+      });
+    });
+  });
+});
 </script>

@@ -1,45 +1,47 @@
 parser = require './metadata'
 
-estraverse = require 'estraverse'
 _ = require 'underscore'
+estraverse = require 'estraverse'
+expanders = require 'expanders'
 
 globalHooks = {}
 globalExtensions = {}
 
-# Encapsulates the extension API that is provided to a single extension.
-class ExtensionAPI
-  constructor: ->
-    @_id = _.uniqueId 'ext-'
-    globalExtensions[@_id] = this
-    @_hooks = {}
+widgetExpander = expanders.createExpander('displayWidget')
 
+# Encapsulates the extension API that is provided to a single extension.
+class Extension
+  constructor: (id) ->
+    if id of globalExtensions
+      throw new Error("An extension named '#{ id }' is already registered")
+
+    @_id = id || _.uniqueId('ext-')
+    globalExtensions[@_id] = this
+
+    @_hooks = {}
+    @_expander = expanders.createExpander('extras')
     @on = _.partial(addHook, @_id, globalHooks)
 
   addWidget: (pos, node, type) ->
-    this.addExtras node,
-      type: 'DisplayWidget'
-      widgetType: type
-      widgetPos: pos
+    # TODO: Figure out how to handle this.
+    if widgetExpander.has(node, 'displayWidget')
+      throw new Error('Conflicting widgets on node')
 
-  addExtras: (node, data) ->
-    # TODO: We should probably store extras in a separate map.
-    node._extras ||= {}
-    key  = @_id + _.uniqueId '_'
-    node._extras[key] = data
+    widgetExpander.set node, 'displayWidget',
+      type: type
+      pos: pos
     return
 
-  getExtras: (node) ->
-    node._extras?[@_id]
+  getWidget: (node) ->
+    # TODO: Should this only be exposed to certain types of extensions?
+    widgetExpander.get(node, 'displayWidget')
 
-  findExtras: (node, cond) ->
-    if node._extras
-      predicate =
-        if _.isFunction(cond)
-          cond
-        else if _.isObject(cond)
-          # TODO: Replace this with _.match after upgrading to Underscore 1.6.
-          (node) -> _.findWhere([node], cond)?
-      _.find(node._extras, predicate)
+  setExtras: (node, data) ->
+    @_expander.set node, 'extras', data
+
+  getExtras: (node, ext) ->
+    exp = ext?._expander || @_expander
+    exp.get(node, 'extras')
 
   # Constants for the `pos` argument to `addWidget`.
   BEFORE: 'before'
@@ -59,7 +61,10 @@ hooksDo = (hook, iter) ->
   _.each hook, (hookFns, id) ->
     _.each hookFns, (fn) -> iter(fn, id)
 
-registerExtension = -> new ExtensionAPI
+registerExtension = (id, initFn) ->
+  ext = new Extension(id, initFn)
+  initFn?.call(null, ext)
+  return ext
 
 parse = (hooks, source) ->
   tree = parser.parse(source)
@@ -107,6 +112,7 @@ onChange = (cm, changeObj) ->
 
 module.exports = {
   createEditor,
+  extensionsTempHack: globalExtensions,
   on: _.partial(addHook, null, globalHooks)
   onChange,  # TODO: Get rid of this.
   parse,

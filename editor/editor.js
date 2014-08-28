@@ -56,9 +56,9 @@ codeMirror.on('cursorActivity', function(cm) {
 });
 
 function render(node) {
-  var extras = moonchild.findExtras(node, { type: 'DisplayWidget' });
-  if (extras)
-    renderWidget(codeMirror, node, extras.widgetPos, extras.widgetType);
+  var widget = moonchild.getWidget(node);
+  if (widget)
+    renderWidget(codeMirror, node, widget.pos, widget.type);
   else
     clearWidgets(codeMirror, node);
 }
