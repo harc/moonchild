@@ -18,29 +18,39 @@ Moonchild.registerExtension(
     comments.each(function(c) {
       // Look for nodes that have Markdown extras.
       // TODO: Add a built-in traversal to do stuff like this.
-      var extras = moonchild.getExtras(c, markdown);
-      if (!extras)
+      var markdownAst = moonchild.getExtras(c, markdown);
+      if (!markdownAst)
         return;
+
+      // Unfortunately, there's no good way to attach an event listener
+      // to the rendered output of a Markdown AST node. Instead, attach a
+      // listener on the top-level element produced by the Markdown.
+      // TODO: Find a better way to do this.
+      markdownAst.eventListeners.click.push(function(e) {
+        var el = e.target;
+        if (el.tagName.toLowerCase() == 'code') {
+          var identNode = declarations[el.textContent];
+          if (identNode) {
+            selectNode(codeMirror, identNode);
+            e.preventDefault();
+          }
+        }
+      });
 
       // Walk the tree and look for <code> nodes. If the node refers to a
       // known declaration, replace the node with a link to the declaration.
-      markdown.walker.reduce(extras, function(memo, node) {
-        if (node.type == 'CODE') {
-          var ident = node.children[0].value;
-          var identNode = declarations[ident];
+      markdown.walker.reduce(markdownAst, function(memo, node) {
+        if (node.type == 'codespan') {
+          var identNode = declarations[node.text];
           if (identNode) {
             return {
-              type: 'A',
-              children: [node],
-              attrs: {
-                href: '#',
-                onclick: function() { selectNode(codeMirror, identNode); }
-              }
+              type: 'link',
+              text: [node],
+              href: '#',
             };
           }
         }
-        node.children = memo;
-        return node;
+        return _.extend(node, memo);
       });
     });
   });

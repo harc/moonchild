@@ -45,41 +45,39 @@
     content: '\2014';
   }
 </style>
+<script src="../deps/marked-ast-0.1.0.js"></script>
 <script>
 Moonchild.registerExtension('markdown', function(moonchild) {
+  // When walking Markdown ASTs, a list of property names for each node type
+  // that should not be recursively visited.
+  var leafProps = {
+    code: ['lang', 'escaped'],
+    heading: ['level', 'raw'],
+    list: ['ordered'],
+    tablecell: ['flags'],
+    link: ['href', 'title'],
+    image: ['href', 'title']
+  };
+
+  // Build a walker for Markdown ASTs (based on underscore-contrib).
   var markdownWalker = _.walk(function(node) {
-    return node.children;
+    if (_.isArray(node) || !_.isObject(node))
+      return node;
+    var keysToOmit = leafProps[node.type];
+    return _.omit(node, keysToOmit, 'type');
   });
 
   // Parsing Markdown from comments
   // ------------------------------
 
-  // Produces an AST for Markdown-formatted text.
-  // This is a hacky, lossy way of doing it, but it works for simple examples.
-  // It would be better to extend `marked` to produce JSON or something.
-  function parseAsMarkdown(text) {
-    // Generate HTML and insert it into the DOM...
-    var div = document.createElement('div');
-    div.innerHTML = marked(text);
-
-    // ...then walk the DOM and produce the parse tree.
-    return _.walk.reduce(div, function(memo, node) {
-      var result = {
-        type: node === div ? 'Markdown' : node.nodeName,
-      };
-      if (memo)
-        result.children = memo;
-      if (node.nodeName == '#text')
-        result.value = node.nodeValue;
-
-      return result;
-    });
-  }
-
   moonchild.on('parse', function(ast, comments) {
     // Build a Markdown parse tree for every non-metadata comment node.
     comments.reject(isMetadata).each(function(node) {
-      moonchild.setExtras(node, parseAsMarkdown(node.value));
+      var ast = marked.parse(node.value);
+      // Offer a way for other plugins to attach click handlers the rendered
+      // HTML. This is hacky -- find a better way.
+      ast.eventListeners = { 'click': [] };
+      moonchild.setExtras(node, ast);
     });
   });
 
@@ -91,29 +89,15 @@ Moonchild.registerExtension('markdown', function(moonchild) {
       return createElement('span');
     },
     render: function(el, node) {
-      var markdownAst = moonchild.getExtras(node);
       el.className = 'mc-markdown mc-markdown-' + node.type.toLowerCase() + '-comment';
-      el.innerHTML = '';
-      markdownToDOM(markdownAst, el);
+      var markdownAst = moonchild.getExtras(node);
+      el.innerHTML = marked.render(markdownAst);
+
+      _.each(markdownAst.eventListeners, function(arr, key) {
+        _.each(arr, function(fn) { el.addEventListener(key, fn); });
+      });
     }
   });
-
-  // Builds a DOM tree for a Markdown AST produced by `parseAsMarkdown`,
-  // and appends the elements to `parentEl`.
-  function markdownToDOM(markdownRoot, parentEl) {
-    return markdownWalker.reduce(markdownRoot, function(results, node) {
-      if (node.type == 'Markdown') {
-        for (var i = 0; i < results.length; i++) parentEl.appendChild(results[i]);
-      } else if (node.type == '#text') {
-        return document.createTextNode(node.value);
-      } else if (node.type) {
-        var el = document.createElement(node.type);
-        _.extend(el, node.attrs);
-        for (var i = 0; i < results.length; i++) el.appendChild(results[i]);
-        return el;
-      }
-    });
-  }
 
   // TODO: Should the widget type should dictate its positioning?
   moonchild.on('display', function(ast, comments) {
