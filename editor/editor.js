@@ -8,8 +8,6 @@ var markers = [];
 var moonchild = Moonchild.registerExtension();
 var options = {};
 
-var expandedMark;
-
 // Add a parse listener that attaches a unique ID to each node, and then marks
 // the text of each comment with its associated AST node.
 moonchild.on('parse', function(ast) {
@@ -20,7 +18,11 @@ moonchild.on('parse', function(ast) {
     var id = _.uniqueId('mc-node-');
     nodes[id] = node;
 
-    var options = { className: 'mc-metadata ' + id };
+    var options = {
+      className: 'mc-metadata ' + id,
+      clearOnEnter: true,
+      handleMouseEvents: true
+    };
     var ellipsis;
     if (node.metadata.value && !containsCursor(codeMirror, node.metadata)) {
       ellipsis = createElement('span', { 'class': 'mc-ellipsis' });
@@ -30,29 +32,20 @@ moonchild.on('parse', function(ast) {
     var marker = markNodeText(codeMirror, node.metadata, options);
     markers.push(marker);
 
-    // Clear the marker (show the text) when the ellipsis is clicked.
-    if (ellipsis) {
-      ellipsis.addEventListener('click', function(e) {
-        marker.clear();
-        setCursorBeforeNode(codeMirror, node.metadata);
-        expandedMark = markNodeText(
-            codeMirror, node.metadata, { className: 'mc-ellipsis-expanded' });
-      });
-    }
-  });
-});
+    // When the mark is cleared because the cursor is inside it, trigger a
+    // reparse as soon as the cursor leaves the node again.
+    marker.on('clear', function() {
+      if (!containsCursor(codeMirror, node.metadata))
+        return;
 
-codeMirror.on('cursorActivity', function(cm) {
-  if (expandedMark) {
-    // If there is an expanded ellipsis and the cursor has now moved outside it,
-    // trigger a reparse in order to collapse the ellipsis.
-    var marks = cm.findMarksAt(cm.getCursor());
-    if (!_.findWhere(marks, { className: 'mc-ellipsis-expanded' })) {
-      expandedMark.clear();
-      expandedMark = null;
-      Moonchild.onChange(codeMirror);
-    }
-  }
+      codeMirror.on('cursorActivity', function triggerReparse() {
+        if (!containsCursor(codeMirror, node.metadata)) {
+          Moonchild.onChange(codeMirror);
+          codeMirror.off('cursorActivity', triggerReparse);
+        }
+      });
+    });
+  });
 });
 
 function render(node) {
