@@ -80,10 +80,6 @@
     .test-result.ok {
       background-color: #5cb85c;
     }
-    .mc-metadata:hover {
-      cursor: pointer;
-      text-decoration: underline;
-    }
 
     .arrow_box {
       box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
@@ -199,6 +195,7 @@ var template = '<h1>{{ greeting }}, {{ name }}!</h1><p>{{ message }}</p>';
   <script src="editor.js"></script>
 
   <!-- Plugins -->
+  <link rel="import" href="plugins/metadata.html">
   <script src="plugins/collectTests.js"></script>
   <script src="plugins/color-widget.js"></script>
   <script src="plugins/templates.js"></script>

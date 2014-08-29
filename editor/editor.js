@@ -3,50 +3,9 @@ function $$(sel) { return document.querySelectorAll(sel); }
 
 var nodes = {};
 var codeMirror = Moonchild.createEditor($('textarea'));
-var markers = [];
 
 var moonchild = Moonchild.registerExtension();
 var options = {};
-
-// Add a parse listener that attaches a unique ID to each node, and then marks
-// the text of each comment with its associated AST node.
-moonchild.on('parse', function(ast) {
-  _.invoke(markers, 'clear');
-
-  ast.filter(hasMetadata).each(function(node) {
-    // Use a unique ID to associate a node and its metadata.
-    var id = _.uniqueId('mc-node-');
-    nodes[id] = node;
-
-    var options = {
-      className: 'mc-metadata ' + id,
-      clearOnEnter: true,
-      handleMouseEvents: true
-    };
-    var ellipsis;
-    if (node.metadata.value && !containsCursor(codeMirror, node.metadata)) {
-      ellipsis = createElement('span', { 'class': 'mc-ellipsis' });
-      ellipsis.innerHTML = '&#8943;';
-      options.replacedWith = ellipsis;
-    }
-    var marker = markNodeText(codeMirror, node.metadata, options);
-    markers.push(marker);
-
-    // When the mark is cleared because the cursor is inside it, trigger a
-    // reparse as soon as the cursor leaves the node again.
-    marker.on('clear', function() {
-      if (!containsCursor(codeMirror, node.metadata))
-        return;
-
-      codeMirror.on('cursorActivity', function triggerReparse() {
-        if (!containsCursor(codeMirror, node.metadata)) {
-          Moonchild.onChange(codeMirror);
-          codeMirror.off('cursorActivity', triggerReparse);
-        }
-      });
-    });
-  });
-});
 
 function render(node) {
   var widget = moonchild.getWidget(node);
