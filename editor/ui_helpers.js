@@ -79,7 +79,7 @@ function markNodeText(cm, node, options) {
 // `widgetClass` is a constructor which delegates to Moonchild.Widget.
 // `pos` indicates where the widget should appear relative to `node` --
 // it can be one of ['before', 'after', 'replace'].
-function renderWidget(cm, node, pos, widgetClass) {
+function renderWidget(cm, node, widgetInfo) {
   // Find all markers at the same location.
   var marks = cm.findMarks(esLocToCm(node.loc.start), esLocToCm(node.loc.end));
 
@@ -89,6 +89,7 @@ function renderWidget(cm, node, pos, widgetClass) {
   });
 
   var el, mark;
+  var widgetClass = widgetInfo.type;
   // Find the first mark whose element was created by `widgetClass`.
   for (var i = 0; i < marks.length; ++i) {
     if (widgetClass.created(markEls[i])) {
@@ -103,6 +104,7 @@ function renderWidget(cm, node, pos, widgetClass) {
   var widget = new widgetClass();
   if (!el) {
     el = widget.create();
+    var pos = widgetInfo.pos;
     if (pos == 'replace') {
       mark = markNodeText(cm, node, { replacedWith: el });
     } else if (pos == 'before' || pos == 'after') {
@@ -114,7 +116,7 @@ function renderWidget(cm, node, pos, widgetClass) {
     marks.push(mark);
   }
   widget.changed = function() { mark.changed(); }
-  widget.render(el, node);
+  widget.render(el, node, widgetInfo.data);
   _.invoke(marks, 'changed');
 }
 

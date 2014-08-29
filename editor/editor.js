@@ -8,9 +8,9 @@ var moonchild = Moonchild.registerExtension();
 var options = {};
 
 function render(node) {
-  var widget = moonchild.getWidget(node);
-  if (widget)
-    renderWidget(codeMirror, node, widget.pos, widget.type);
+  var widgetInfo = moonchild.getWidget(node);
+  if (widgetInfo)
+    renderWidget(codeMirror, node, widgetInfo);
   else
     clearWidgets(codeMirror, node);
 }

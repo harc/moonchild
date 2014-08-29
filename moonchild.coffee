@@ -21,7 +21,7 @@ class Extension
     @_expander = expanders.createExpander('extras')
     @on = _.partial(addHook, @_id, globalHooks)
 
-  addWidget: (pos, node, type) ->
+  addWidget: (pos, node, type, userData) ->
     # TODO: Figure out how to handle this.
     if widgetExpander.has(node, 'displayWidget')
       throw new Error('Conflicting widgets on node')
@@ -29,6 +29,7 @@ class Extension
     widgetExpander.set node, 'displayWidget',
       type: type
       pos: pos
+      data: userData
     return
 
   getWidget: (node) ->
