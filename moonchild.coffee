@@ -99,12 +99,6 @@ parse = (hooks, source) ->
     applySafely(func, hookArgs)
   tree
 
-createEditor = (el) ->
-  editor = CodeMirror.fromTextArea(el)
-  editor.on('change', _.debounce(onChange, 250))
-  editor.setValue(editor.getValue() + ' ')  # Trigger onChange.
-  editor
-
 getHookArgs = (ast) ->
   # For API convenience, the tree is currently passed as an
   # Underscore-wrapped list of nodes, but this should change.
@@ -118,9 +112,9 @@ applySafely = (func, args) ->
   catch e
     console.log e.stack || e
 
-onChange = (cm, changeObj) ->
+onChange = (newValue) ->
   try
-    tree = parse(globalHooks, cm.getValue())
+    tree = parse(globalHooks, newValue)
   catch e
     console.log e
     return
@@ -137,7 +131,6 @@ onChange = (cm, changeObj) ->
     applySafely(func, hookArgs)
 
 module.exports = {
-  createEditor,
   on: _.partial(addHook, null, globalHooks)
   onChange,  # TODO: Get rid of this.
   parse,

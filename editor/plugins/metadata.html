@@ -41,7 +41,7 @@
 
           codeMirror.on('cursorActivity', function triggerReparse() {
             if (!containsCursor(codeMirror, node.metadata)) {
-              Moonchild.onChange(codeMirror);
+              Moonchild.onChange(codeMirror.getValue());
               codeMirror.off('cursorActivity', triggerReparse);
             }
           });

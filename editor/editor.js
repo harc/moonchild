@@ -2,10 +2,15 @@ function $(sel) { return document.querySelector(sel); }
 function $$(sel) { return document.querySelectorAll(sel); }
 
 var nodes = {};
-var codeMirror = Moonchild.createEditor($('textarea'));
+var codeMirror = CodeMirror.fromTextArea($('textarea'));
+codeMirror.on('change', _.debounce(editorOnChange, 250));
 
 var moonchild = Moonchild.registerExtension();
 var options = {};
+
+function editorOnChange(cm, changeObj) {
+  Moonchild.onChange(cm.getValue());
+}
 
 function render(node) {
   var widgetInfo = moonchild.getWidget(node);
@@ -55,6 +60,6 @@ for (var i = 0; i < controls.length; i++) {
       for (var j = 0; j < controls.length; j++)
         toggle(controls[j], this.classList.contains('on'));
     }
-    Moonchild.onChange(codeMirror);
+    Moonchild.onChange(codeMirror.getValue());
   });
 }
