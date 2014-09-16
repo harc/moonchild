@@ -33,13 +33,10 @@ Widget.extend = function(protoProps, staticProps) {
   // later.
   child.__super__ = parent.prototype;
 
-  // Assign a unique ID to each type of widget.
-  var typeId = _.uniqueId('widget-');
-
   // A static method to check if a given Element appears to be created by
   // this type of Widget.
   child.created = function(el) {
-    return el._moonchildWidgetId == typeId;
+    return el._moonchildWidgetType == child;
   };
 
   // Wrap the `create` method and ensure that the wiget ID is stored as an
@@ -47,7 +44,7 @@ Widget.extend = function(protoProps, staticProps) {
   var originalCreate = child.prototype.create;
   child.prototype.create = function() {
     var el = originalCreate.call(this);
-    el._moonchildWidgetId = typeId;
+    el._moonchildWidgetType = child;
     return el;
   };
 
@@ -126,7 +123,7 @@ function clearWidgets(cm, node) {
   _.each(marks, function(m) {
     if (!m.replacedWith) return;
     var el = m.replacedWith.childNodes[0];
-    if (el._moonchildWidgetId)
+    if (el._moonchildWidgetType)
       m.clear();
   });
 }
