@@ -6,6 +6,7 @@ expanders = require 'expanders'
 
 globalHooks = {}
 globalExtensions = {}
+globalEditor = {}
 
 widgetExpander = expanders.createExpander('displayWidget')
 exportsExpander = expanders.createExpander('extensionId')
@@ -63,9 +64,10 @@ addHook = (id, hookState, hookName, func) ->
   hooks[id].push(func)
   return
 
-hooksDo = (hook, iter) ->
-  _.each hook, (hookFns, id) ->
-    _.each hookFns, (fn) -> iter(fn, id)
+invokeHook = (hook, args) ->
+  _.each globalHooks[hook], (hookFns, id) ->
+    _.each hookFns, (fn) ->
+      applySafely(fn, args)
 
 initializeExtension = (ext, deps, initFn) ->
   result = initFn?.apply(null, [ext].concat(deps))
@@ -94,9 +96,7 @@ registerExtension = (id, deps, initFn) ->
 
 parse = (hooks, source) ->
   tree = parser.parse(source)
-  hookArgs = getHookArgs(tree)
-  hooksDo globalHooks['parse'], (func, id) ->
-    applySafely(func, hookArgs)
+  invokeHook('parse', getHookArgs(tree))
   tree
 
 getHookArgs = (ast) ->
@@ -123,17 +123,22 @@ onChange = (newValue) ->
   # TODO: This should be moved into a function that can be invoked by the
   # editor plugin.
   hookArgs = getHookArgs(tree)
-  hooksDo globalHooks['display'], (func, id) ->
-    applySafely(func, hookArgs)
+  invokeHook('display', hookArgs)
 
   # Run the render hooks.
-  hooksDo globalHooks['render'], (func, id) ->
-    applySafely(func, hookArgs)
+  invokeHook('render', hookArgs)
+
+setEditor = (editor) ->
+  globalEditor = editor
+
+getEditor = -> globalEditor
 
 module.exports = {
   on: _.partial(addHook, null, globalHooks)
   onChange,  # TODO: Get rid of this.
   parse,
   registerExtension,
-  traverse: estraverse.traverse
+  traverse: estraverse.traverse,
+  setEditor,
+  getEditor
 }
