@@ -1,5 +1,6 @@
 <style>
   .mc-markdown {
+    box-sizing: border-box;
     color: #333;
     font-family: Georgia;
     font-size: 13px;
@@ -44,6 +45,14 @@
   .mc-markdown-line-comment > p::before {
     content: '\2014';
   }
+  .mc-markdown textarea {
+    border: 0;
+    font-family: monospace;
+    font-size: 12px;
+    outline: none;
+    height: 100%;
+    width: 100%;
+  }
 </style>
 <script src="../deps/marked-ast-0.1.0.js"></script>
 <script>
@@ -86,16 +95,44 @@ Moonchild.registerExtension('markdown', function(moonchild) {
 
   var CommentWidget = Moonchild.Widget.extend({
     create: function() {
-      return createElement('span');
+      var el = createElement('span');
+      var self = this;
+      el.addEventListener('dblclick', function(e) {
+        self._toggleEditing(el);
+        e.preventDefault();
+      });
+      return el;
     },
     render: function(el, node) {
+      this._node = node;
       el.className = 'mc-markdown mc-markdown-' + node.type.toLowerCase() + '-comment';
+      if (this._editing) {
+        var height = el.offsetHeight;
+        el.innerHTML = '<textarea>' + node.value + '</textarea>';
+        el.style.height = height + 'px';
+        var self = this;
+        el.firstChild.addEventListener('blur', function() {
+          self._toggleEditing(el);
+        });
+        return;
+      }
       var markdownAst = moonchild.getExtras(node);
       el.innerHTML = marked.render(markdownAst);
+      el.style.height = 'auto';
 
       _.each(markdownAst.eventListeners, function(arr, key) {
         _.each(arr, function(fn) { el.addEventListener(key, fn); });
       });
+    },
+    _toggleEditing: function(el) {
+      this._editing = !this._editing;
+      if (!this._editing) {
+        // Hack-o-rific.
+        Moonchild.getEditor().replaceNodeText(
+            this._node, '/*' + el.firstChild.value + '*/');
+      } else {
+        this.render(el, this._node);
+      }
     }
   });
 

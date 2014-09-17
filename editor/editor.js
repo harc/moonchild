@@ -50,7 +50,7 @@ function renderNode(cm, node) {
 // ------
 
 function Editor() {
-  codeMirror = CodeMirror.fromTextArea($('textarea'));
+  codeMirror = this._codeMirror = CodeMirror.fromTextArea($('textarea'));
   codeMirror.on('change', _.debounce(editorOnChange, 250));
 
   var render = _.partial(renderNode, codeMirror);
@@ -73,5 +73,14 @@ function Editor() {
   initializeExtensionToggles(codeMirror);
 }
 
-Editor.prototype.replaceRange = function(text, fromOffset, toOffset) {
+Editor.prototype.replaceRange = function(fromOffset, toOffset, text) {
+  this._codeMirror.replaceRange(text, fromOffset, toOffset);
+}
+
+Editor.prototype.insertText = function(offset, text) {
+  this.replaceRange(offset, null, text);
+}
+
+Editor.prototype.replaceNodeText = function(node, text) {
+  this.replaceRange(esLocToCm(node.loc.start), esLocToCm(node.loc.end), text);
 }

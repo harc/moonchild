@@ -81,9 +81,7 @@ function renderWidget(cm, node, widgetInfo) {
   var marks = cm.findMarks(esLocToCm(node.loc.start), esLocToCm(node.loc.end));
 
   // Extract the associated DOM nodes from the markers.
-  var markEls = _.map(marks, function(m) {
-    return m.replacedWith && m.replacedWith.childNodes[0];
-  });
+  var markEls = _.map(marks, widgetForMark);
 
   var el, mark;
   var widgetClass = widgetInfo.type;
@@ -121,11 +119,14 @@ function renderWidget(cm, node, widgetInfo) {
 function clearWidgets(cm, node) {
   var marks = cm.findMarks(esLocToCm(node.loc.start), esLocToCm(node.loc.end));
   _.each(marks, function(m) {
-    if (!m.replacedWith) return;
-    var el = m.replacedWith.childNodes[0];
-    if (el._moonchildWidgetType)
+    var el = widgetForMark(m);
+    if (el && el._moonchildWidgetType)
       m.clear();
   });
+}
+
+function widgetForMark(mark) {
+  return mark.replacedWith && mark.replacedWith.childNodes[0];
 }
 
 // Returns a CodeMirror location object that is equivalent to the given
