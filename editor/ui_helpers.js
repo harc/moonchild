@@ -42,8 +42,8 @@ Widget.extend = function(protoProps, staticProps) {
   // Wrap the `create` method and ensure that the wiget ID is stored as an
   // expando property on the DOM node.
   var originalCreate = child.prototype.create;
-  child.prototype.create = function() {
-    var el = originalCreate.call(this);
+  child.prototype.create = function(node) {
+    var el = originalCreate.call(this, node);
     el._moonchildWidgetType = child;
     return el;
   };
@@ -98,7 +98,7 @@ function renderWidget(cm, node, widgetInfo) {
   // render it using the previously existing node.
   var widget = new widgetClass();
   if (!el) {
-    el = widget.create();
+    el = widget.create(node);
     var pos = widgetInfo.pos;
     if (pos == 'replace') {
       mark = markNodeText(cm, node, { replacedWith: el });
