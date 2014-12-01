@@ -1,18 +1,19 @@
 # Moonchild
 
-# Moonchild
-
 Moonchild brings source code to life. It's a toolkit for experimenting with new
-kinds of programming interfaces. It's based on CodeMirror, a web-based text
-editor. Moonchild adds a framework which makes it easy to create plugins which modify and extend the source code presentation.
+kinds of programming interfaces. It's based on [CodeMirror][cm], a web-based
+text editor. Moonchild adds a framework which makes it easy to create plugins
+which modify and extend the source code presentation.
+
+[cm]: http://codemirror.net/
 
 Plugins (written in HTML and JavaScript) consume the AST, and can produce DOM
 nodes that modify or replace the text of any of the AST nodes. Plugins can not
 only read from the AST, they can also modify the original source code. For
-example, a plugin could transfer any hex colour codes in the source
-code into a colour swatch that could pop open a standard colour picker.
+example, a plugin could transform hex colour codes in the source code into a
+colour swatches that could pop open a standard colour picker.
 
-Plugins can not only react to the state of the AST; they can also react to
+Plugins can not only react to the state of the AST, they can also react to
 data that is produced by other plugins. It's also possible to embed metadata
 in the source code via a special comment format. These metadata comments are
 parsed along with the source code, and attached to the appropriate AST node.
@@ -26,7 +27,7 @@ producing it.
 
 Unlike some approaches to non-textual programming, Moonchild does not reject
 plain text. Instead, it proposes that code should be augmented _when 
-appropriate_ with richer behaviours and representations, much you'd find
+appropriate_ with richer behaviours and representations, much like you'd find
 in a [good textbook](http://mitpress.mit.edu/books/introduction-algorithms):
 
 [![Merge diagram from "Introduction to Algorithms"][clr-image]][clr-link]
@@ -41,6 +42,11 @@ JavaScript, making it much more approachable and accessible than some
 previous frameworks.
 
 [barista]: https://faculty.washington.edu/ajko/barista.shtml
+
+You can also check out a [15-minute demo of Moonchild][http://vimeo.com/106498564]
+that was presented at the [Future Programming Workshop at SPLASH 2014][fpw].
+
+[fpw]: http://www.future-programming.org/program.html
 
 ## Basic Setup
 
