@@ -43,7 +43,7 @@ previous frameworks.
 
 [barista]: https://faculty.washington.edu/ajko/barista.shtml
 
-You can also check out a [15-minute demo of Moonchild][http://vimeo.com/106498564]
+You can also check out a [15-minute demo of Moonchild](http://vimeo.com/106498564)
 that was presented at the [Future Programming Workshop at SPLASH 2014][fpw].
 
 [fpw]: http://www.future-programming.org/program.html
