@@ -29,7 +29,7 @@ plain text. Instead, it proposes that code should be augmented _when
 appropriate_ with richer behaviours and representations, much you'd find
 in a [good textbook](http://mitpress.mit.edu/books/introduction-algorithms):
 
-[![Merge diagram](clr-image)][clr-link]
+[![Merge diagram from "Introduction to Algorithms"][clr-image]][clr-link]
 
 [clr-image]: https://raw.githubusercontent.com/pdubroy/moonchild/master/clr-merge-diagram.png
 [clr-link]: http://mitpress.mit.edu/sites/default/files/titles/content/9780262033848_sch_0001.pdf
