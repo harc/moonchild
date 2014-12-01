@@ -1,6 +1,43 @@
 # Moonchild
 
-Moonchild brings source code to life.
+# Moonchild
+
+Moonchild brings source code to life. It's a toolkit for experimenting with new
+kinds of programming interfaces. It's based on CodeMirror, a web-based text
+editor. Moonchild adds a framework which makes it easy to create plugins which modify and extend the source code presentation.
+
+Plugins (written in HTML and JavaScript) consume the AST, and can produce DOM
+nodes that modify or replace the text of any of the AST nodes. Plugins can not
+only read from the AST, they can also modify the original source code. For
+example, a plugin could transfer any hex colour codes in the source
+code into a colour swatch that could pop open a standard colour picker.
+
+Plugins can not only react to the state of the AST; they can also react to
+data that is produced by other plugins. It's also possible to embed metadata
+in the source code via a special comment format. These metadata comments are
+parsed along with the source code, and attached to the appropriate AST node.
+
+## Why?
+
+Many people have suggested ASCII text files might not be the best way to
+present source code. On the other hand, plain text has a lot of benefits,
+not least of which is the huge ecosystem of tools built around consuming and
+producing it.
+
+Unlike some approaches to non-textual programming, Moonchild does not reject
+plain text. Instead, it proposes that code should be augmented _when 
+appropriate_ with richer behaviours and representations, much you'd find
+in a [good textbook](http://mitpress.mit.edu/books/introduction-algorithms):
+
+![Merge diagram](https://raw.githubusercontent.com/pdubroy/moonchild/master/clr-merge-diagram.png)
+
+There have been many extensible editor frameworks built in the past, including
+(but not limited to) Emacs, Eclipse, and [Barista][barista]. One thing that
+makes Moonchild different is that plugins can be written in HTML and
+JavaScript, making it much more approachable and accessible than some
+previous frameworks.
+
+[barista]: https://faculty.washington.edu/ajko/barista.shtml
 
 ## Basic Setup
 
