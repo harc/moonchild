@@ -29,7 +29,10 @@ plain text. Instead, it proposes that code should be augmented _when
 appropriate_ with richer behaviours and representations, much you'd find
 in a [good textbook](http://mitpress.mit.edu/books/introduction-algorithms):
 
-![Merge diagram](https://raw.githubusercontent.com/pdubroy/moonchild/master/clr-merge-diagram.png)
+[![Merge diagram](clr-image)][clr-link]
+
+[clr-image]: https://raw.githubusercontent.com/pdubroy/moonchild/master/clr-merge-diagram.png
+[clr-link]: http://mitpress.mit.edu/sites/default/files/titles/content/9780262033848_sch_0001.pdf
 
 There have been many extensible editor frameworks built in the past, including
 (but not limited to) Emacs, Eclipse, and [Barista][barista]. One thing that
