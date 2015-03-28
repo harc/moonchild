@@ -15,6 +15,7 @@
     "browserify": "^3.38.0",
     "coffee-script": "~1.7.1",
     "coffeelint": "^1.5.1",
+    "expanders": "0.1.0",
     "jshint": "~2.4.1",
     "node-static": "^0.7.4",
     "tap": "~0.4.8",
