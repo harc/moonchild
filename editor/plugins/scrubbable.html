@@ -43,11 +43,11 @@
       var self = this;
       handleDrag(el, {
         start: function(e) {
-          origin = { x: e.x, y: e.y };
+          origin = { x: e.clientX, y: e.clientY };
           document.body.classList.add('mc-scrubbing');
         },
         drag: function(e) {
-          el.textContent = originalValue + (e.x - origin.x);
+          el.textContent = originalValue + (e.clientX - origin.x);
         },
         end: function(e) {
           document.body.classList.remove('mc-scrubbing');
