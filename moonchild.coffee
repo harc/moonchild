@@ -83,7 +83,7 @@ registerExtension = (id, deps, initFn) ->
     deps = []
 
   deps = deps.map (name) ->
-    if not name of globalExtensions
+    if not (name of globalExtensions)
       throw new Error "Unmet dependency #{name}"
     return globalExtensions[name].exports
 
