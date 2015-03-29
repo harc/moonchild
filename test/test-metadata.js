@@ -1,8 +1,9 @@
-var test = require('tap').test;
-var metadata = require('../lib/metadata');
+'use strict';
 
-var _ = require('underscore');
-var estraverse = require('estraverse');
+var _ = require('underscore'),
+    estraverse = require('estraverse'),
+    metadata = require('../lib/metadata'),
+    test = require('tap').test;
 
 // Returns a list of all the nodes in an AST using pre-order traversal.
 function nodes(ast) {
@@ -11,7 +12,7 @@ function nodes(ast) {
     enter: function(node, parent) {
       result.push(node);
     }
-  })
+  });
   return result;
 }
 
@@ -27,7 +28,7 @@ function firstWithMetadata(ast) {
 }
 
 test('basic metadata', function (t) {
-  var ast = parse('42;\n/*^ {} */\nvar meaning;')
+  var ast = parse('42;\n/*^ {} */\nvar meaning;');
   t.equals(firstWithMetadata(ast).type, 'VariableDeclaration', 'Normal metadata is attached to the next node');
 
   ast = parse('42; //^ {}');

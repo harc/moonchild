@@ -1,5 +1,7 @@
-var test = require('tap').test;
-var Moonchild = require('../lib/moonchild');
+'use strict';
+
+var test = require('tap').test,
+    Moonchild = require('../lib/moonchild');
 
 test('hooks', function(t) {
   var tree;

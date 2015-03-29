@@ -13,26 +13,28 @@
   "devDependencies": {
     "beefy": "^2.1.0",
     "browserify": "^3.38.0",
-    "coffee-script": "~1.7.1",
-    "coffeelint": "^1.5.1",
+    "eslint": "^0.18.0",
     "expanders": "0.1.0",
-    "jshint": "~2.4.1",
     "node-static": "^0.7.4",
     "tap": "~0.4.8",
+    "tap-spec": "^2.2.2",
     "watchify": "~0.6.2"
   },
-  "scripts": {
-    "build": "browserify --extension '.coffee' -c 'coffee -sc' -s Moonchild -o lib/moonchild-bundle.js moonchild.coffee",
-    "watch": "watchify  --extension '.coffee' -c 'coffee -sc' -s Moonchild -o lib/moonchild-bundle.js moonchild.coffee",
-    "test": "coffee -o lib *.coffee && tap test/*.js",
-    "whizzy-demo": "open examples/whizzy.html; beefy lib/whizzy.js -- -s whizzy",
-    "whizzy-tests": "open test/test-whizzy.html; beefy test/test-whizzy.js",
-    "serve": "http-server -o",
-    "dist": "npm run build && npm run test && npm run lint",
-    "jshint": "jshint *.js test/*.js",
-    "lint": "coffeelint --rules coffeelint.json *.coffee",
-    "start": "node server.js"
+  "browserify": {
+    "opts": "main.js -s Moonchild -o dist/moonchild-bundle.js"
   },
+  "scripts": {
+    "build": "browserify $npm_package_browserify_opts",
+    "lint": "eslint lib test $npm_config_package_main",
+    "prepublish": "npm run build && npm run test && npm run lint",
+    "serve": "http-server -o",
+    "start": "node server.js",
+    "test": "tap test/*.js",
+    "watch": "watchify $npm_package_browserify_opts",
+    "whizzy-demo": "open examples/whizzy.html; beefy lib/whizzy.js -- -s whizzy",
+    "whizzy-tests": "open test/test-whizzy.html; beefy test/test-whizzy.js"
+  },
+  "main": "main.js",
   "directories": {
     "test": "test"
   },
