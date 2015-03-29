@@ -14,7 +14,6 @@
     "beefy": "^2.1.0",
     "browserify": "^3.38.0",
     "eslint": "^0.18.0",
-    "expanders": "0.1.0",
     "node-static": "^0.7.4",
     "tap": "~0.4.8",
     "tap-spec": "^2.2.2",
