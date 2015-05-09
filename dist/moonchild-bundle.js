@@ -1,4 +1,72 @@
 !function(e){if("object"==typeof exports)module.exports=e();else if("function"==typeof define&&define.amd)define(e);else{var o;"undefined"!=typeof window?o=window:"undefined"!=typeof global?o=global:"undefined"!=typeof self&&(o=self),o.Moonchild=e()}}(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);throw new Error("Cannot find module '"+o+"'")}var f=n[o]={exports:{}};t[o][0].call(f.exports,function(e){var n=t[o][1][e];return s(n?n:e)},f,f.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(_dereq_,module,exports){
+var WebSocketLib = _dereq_('ws');
+var util         = _dereq_('./util');
+
+function createChannel(port) {
+  // add listener from server
+  // channel.on("eventName", callback)
+  // send stuff to server
+  // channel.send("eventName", data)
+
+  var channel   = Object.create(null);
+
+  var url       = util.formatString("ws://localhost:{port}/editor/", {port: port});
+  var ws        = new WebSocketLib(url);
+  var listeners = {};
+
+  console.log("Websocket connecting to %s", url);
+
+  ws.onmessage = function (message) {
+    // Doesn't handle cyclic values
+    var data = JSON.parse(message.data);
+
+    // expects "data" to have .type
+    var type = data.type;
+
+    if (type in listeners) {
+      listeners[type].forEach(function (listener) {
+        listener(data);
+      });
+    } else {
+      console.log(util.formatString("The server is shouting '{type}'! But no-one is there to hear him...", {type: type}));
+    }
+  };
+
+  ws.onopen = function () {
+    console.log("open!");
+  };
+
+  // handle ws.on('error') here later..
+  // ws.onerror = function (error) {
+  //
+  // };
+
+  channel.on = function (messageType, callback) {
+    if (messageType in listeners) {
+      listeners[messageType].push(callback);
+    } else {
+      listeners[messageType] = [callback];
+    }
+  };
+
+  channel.send = function (messageType, data) {
+    var message;
+    data.type = messageType;
+
+    // Doesn't handle cyclic values
+    message = JSON.stringify(data);
+
+    ws.send(message);
+  };
+
+  return channel;
+}
+
+module.exports = {
+  createChannel: createChannel
+};
+
+},{"./util":4,"ws":9}],2:[function(_dereq_,module,exports){
 'use strict';
 
 var _ = _dereq_('underscore'),
@@ -100,17 +168,22 @@ module.exports = {
   parse: parse
 };
 
-},{"esprima":4,"estraverse":5,"underscore":6}],2:[function(_dereq_,module,exports){
+},{"esprima":6,"estraverse":7,"underscore":8}],3:[function(_dereq_,module,exports){
 'use strict';
 
 var _ = _dereq_('underscore'),
     parser = _dereq_('./metadata'),
     estraverse = _dereq_('estraverse'),
-    expanders = _dereq_('../third_party/expanders');
+    expanders = _dereq_('../third_party/expanders'),
+    util = _dereq_('./util.js'),
+    createChannel = _dereq_('./channel.js').createChannel;
 
 var globalHooks = {},
     globalExtensions = {},
     globalEditor = {};
+
+var port = util.getParameterByName("port") || 8081;
+var channel = createChannel(port);
 
 var widgetExpander = expanders.createExpander('displayWidget');
 var exportsExpander = expanders.createExpander('extensionId');
@@ -163,7 +236,7 @@ Extension.prototype.REPLACE = 'replace';
 // Allows a client to hook the action named `hookName`. Every time the action
 // performed, `visitor` will be called with the hook-specific arguments.
 function addHook(id, hookState, hookName, func) {
-  var hooks = {};
+  var hooks;
 
   if (!id) {
     id = _.uniqueId('hook-');
@@ -172,7 +245,7 @@ function addHook(id, hookState, hookName, func) {
   if (hookState[hookName]) {
     hooks = hookState[hookName];
   } else {
-    hookState[hookName] = {};
+    hooks = hookState[hookName] = {};
   }
 
   if (!hooks[id]) {
@@ -213,17 +286,22 @@ function registerExtension(id, deps, initFn) {
     initFn = deps;
     deps = [];
   }
+
   deps = deps.map(function(name) {
     if (!(name in globalExtensions)) {
       throw new Error('Unmet dependency ' + name);
     }
+
     return globalExtensions[name].exports;
   });
+
   var ext = new Extension(id);
   ext.exports = initializeExtension(ext, deps, initFn);
+
   // Allow the exports object can be traced back to the extension itself.
   exportsExpander.set(ext.exports, 'extensionId', ext._id);
   globalExtensions[ext._id] = ext;
+
   return ext;
 }
 
@@ -237,11 +315,13 @@ function getHookArgs(ast) {
   // For API convenience, the tree is currently passed as an
   // Underscore-wrapped list of nodes, but this should change.
   var nodes = [];
+
   estraverse.traverse(ast, {
     enter: function(node) {
       return nodes.push(node);
     }
   });
+
   return [_.chain(nodes), _.chain(ast.comments)];
 }
 
@@ -253,14 +333,7 @@ function applySafely(func, args) {
   }
 }
 
-function onChange(newValue) {
-  var tree;
-  try {
-    tree = parse(globalHooks, newValue);
-  } catch (e) {
-    console.log(e);  // eslint-disable-line no-console
-    return;
-  }
+function runDisplayHooks(tree) {
   // Run the display hooks.
   // TODO: This should be moved into a function that can be invoked by the
   // editor plugin.
@@ -269,6 +342,19 @@ function onChange(newValue) {
 
   // Run the render hooks.
   invokeHook('render', hookArgs);
+}
+
+function onChange(newValue) {
+  var tree;
+
+  try {
+    tree = parse(globalHooks, newValue);
+  } catch (e) {
+    console.log(e);  // eslint-disable-line no-console
+    return;
+  }
+
+  runDisplayHooks(tree);
 }
 
 function setEditor(editor) {
@@ -280,6 +366,16 @@ function getEditor() {
   return globalEditor;
 }
 
+function getChannel() {
+  return channel;
+}
+
+function poke() {
+  // poke invoked onChange, this can be used to update Moonchild when
+  // text was set in a non-standard way
+  onChange();
+}
+
 module.exports = {
   on: _.partial(addHook, null, globalHooks),
   onChange: onChange,  // TODO: Get rid of this.
@@ -287,13 +383,40 @@ module.exports = {
   registerExtension: registerExtension,
   traverse: estraverse.traverse,
   setEditor: setEditor,
-  getEditor: getEditor
+  getEditor: getEditor,
+  poke: poke,
+  getChannel: getChannel
 };
 
-},{"../third_party/expanders":7,"./metadata":1,"estraverse":5,"underscore":6}],3:[function(_dereq_,module,exports){
+},{"../third_party/expanders":10,"./channel.js":1,"./metadata":2,"./util.js":4,"estraverse":7,"underscore":8}],4:[function(_dereq_,module,exports){
+function getParameterByName(name) {
+    name = name.replace(/[\[]/, "\\[").replace(/[\]]/, "\\]");
+    var regex = new RegExp("[\\?&]" + name + "=([^&#]*)"),
+        results = regex.exec(location.search);
+    return results === null ? "" : decodeURIComponent(results[1].replace(/\+/g, " "));
+}
+
+function formatString(string, arguments) {
+  // formats string using an object
+  // formatString("hi {name}!", {name: "kiwi"}) -> "hi kiwi!"
+  var type = typeof arguments[0];
+
+  for (var r in arguments) {
+    string = string.replace(new RegExp("\\{" + r + "\\}", "gi"), arguments[r]);
+  }
+
+  return string;
+}
+
+module.exports = {
+  getParameterByName: getParameterByName,
+  formatString: formatString
+};
+
+},{}],5:[function(_dereq_,module,exports){
 module.exports = _dereq_('./lib/moonchild');
 
-},{"./lib/moonchild":2}],4:[function(_dereq_,module,exports){
+},{"./lib/moonchild":3}],6:[function(_dereq_,module,exports){
 /*
   Copyright (C) 2013 Ariya Hidayat <ariya.hidayat@gmail.com>
   Copyright (C) 2013 Thaddee Tyl <thaddee.tyl@gmail.com>
@@ -4125,7 +4248,7 @@ parseStatement: true, parseSourceElement: true */
 }));
 /* vim: set sw=4 ts=4 et tw=80 : */
 
-},{}],5:[function(_dereq_,module,exports){
+},{}],7:[function(_dereq_,module,exports){
 /*
   Copyright (C) 2012-2013 Yusuke Suzuki <utatane.tea@gmail.com>
   Copyright (C) 2012 Ariya Hidayat <ariya.hidayat@gmail.com>
@@ -4816,7 +4939,7 @@ parseStatement: true, parseSourceElement: true */
 }));
 /* vim: set sw=4 ts=4 et tw=80 : */
 
-},{}],6:[function(_dereq_,module,exports){
+},{}],8:[function(_dereq_,module,exports){
 //     Underscore.js 1.8.3
 //     http://underscorejs.org
 //     (c) 2009-2015 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
@@ -6366,7 +6489,52 @@ parseStatement: true, parseSourceElement: true */
   }
 }.call(this));
 
-},{}],7:[function(_dereq_,module,exports){
+},{}],9:[function(_dereq_,module,exports){
+
+/**
+ * Module dependencies.
+ */
+
+var global = (function() { return this; })();
+
+/**
+ * WebSocket constructor.
+ */
+
+var WebSocket = global.WebSocket || global.MozWebSocket;
+
+/**
+ * Module exports.
+ */
+
+module.exports = WebSocket ? ws : null;
+
+/**
+ * WebSocket constructor.
+ *
+ * The third `opts` options object gets ignored in web browsers, since it's
+ * non-standard, and throws a TypeError if passed to the constructor.
+ * See: https://github.com/einaros/ws/issues/227
+ *
+ * @param {String} uri
+ * @param {Array} protocols (optional)
+ * @param {Object) opts (optional)
+ * @api public
+ */
+
+function ws(uri, protocols, opts) {
+  var instance;
+  if (protocols) {
+    instance = new WebSocket(uri, protocols);
+  } else {
+    instance = new WebSocket(uri);
+  }
+  return instance;
+}
+
+if (WebSocket) ws.prototype = WebSocket.prototype;
+
+},{}],10:[function(_dereq_,module,exports){
 (function (global){
 !function(e){if("object"==typeof exports&&"undefined"!=typeof module)module.exports=e();else if("function"==typeof define&&define.amd)define([],e);else{var f;"undefined"!=typeof window?f=window:"undefined"!=typeof global?f=global:"undefined"!=typeof self&&(f=self),f.expanders=e()}}(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof _dereq_=="function"&&_dereq_;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof _dereq_=="function"&&_dereq_;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(_dereq_,module,exports){
 /* global -Symbol, -WeakMap */
@@ -7568,6 +7736,6 @@ defineProperty(WeakMapPoly.prototype, toStringTagSymbol, d('c', 'WeakMap'));
 },{"./is-native-implemented":20,"d":22,"es5-ext/object/set-prototype-of":38,"es5-ext/object/valid-object":42,"es5-ext/object/valid-value":43,"es6-iterator/for-of":49,"es6-iterator/get":50,"es6-symbol":2}]},{},[1])(1)
 });
 }).call(this,typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}]},{},[3])
-(3)
+},{}]},{},[5])
+(5)
 });

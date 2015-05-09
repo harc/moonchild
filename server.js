@@ -1,10 +1,15 @@
 var Server = require('node-static').Server,
     http = require('http'),
-    util = require('util');
+    util = require('util'),
+    WebSocketServer = require('ws').Server,
+    fs = require('fs');
 
-var port = 8080;
+var httpPort = 8080;
+var wsPort = 8081;
 var fileServer = new(Server)('.');
 var server = http.createServer(handleRequest);
+
+var channel = new WebSocketServer({port: wsPort});
 
 function handleRequest(req, res) {
   req.addListener('end', function() {
@@ -21,13 +26,65 @@ function handleRequest(req, res) {
 }
 
 function tryNextPort(err) {
-  if (err.code == 'EADDRINUSE' || err.code == 'EACCES')
-    server.listen(++port);
+  if (err.code == 'EADDRINUSE' || err.code == 'EACCES') {
+    port += 1;
+    server.listen(port);
+    // channel = ws.WebSocket("ws://localhost:" + port);
+  }
+}
+
+function sendData(messageType, data) {
+  var message;
+
+  data.type = messageType;
+  message   = JSON.stringify(data);
+
+  channel.clients.forEach(function (client) {
+    console.log('sending message', message);
+    client.send(message);
+  });
+}
+
+function sendFile(filePath) {
+  fs.readFile(filePath, {encoding: "utf-8"}, function (err, data) {
+    if (err) {
+      console.log(err);
+    } else {
+      console.log("sending file %s to editor!", filePath);
+      sendData("fileLoad", {content: data});
+    }
+  });
 }
 
 server.on('error', tryNextPort);
+channel.on('error', function (error) {
+  // try next port for wss
+  console.log(error);
+});
+
 server.on('listening', function() {
   server.removeListener('error', tryNextPort);
-  console.log('Moonchild is running at http://localhost:' + port + '/editor/');
+  console.log('Moonchild is running at http://localhost:' + httpPort + '/editor/');
+  console.log("Its websocket is listening at ws://localhost:8080");
 });
+
+channel.on('connection', function (client) {
+  console.log('opened ws');
+  if (process.argv[2]) {
+    sendFile(process.argv[2]);
+  }
+
+  client.on("message", function (message) {
+    var data = JSON.parse(message);
+
+    if (data.type === "saveFile") {
+      console.log("received request to save file. Purposefully ignoring this for now");
+    }
+  });
+});
+
+channel.on('message', function () {
+  console.log('received message');
+});
+
 server.listen(8080);
