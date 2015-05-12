@@ -1,6 +1,6 @@
-!function(e){if("object"==typeof exports)module.exports=e();else if("function"==typeof define&&define.amd)define(e);else{var o;"undefined"!=typeof window?o=window:"undefined"!=typeof global?o=global:"undefined"!=typeof self&&(o=self),o.Moonchild=e()}}(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);throw new Error("Cannot find module '"+o+"'")}var f=n[o]={exports:{}};t[o][0].call(f.exports,function(e){var n=t[o][1][e];return s(n?n:e)},f,f.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(_dereq_,module,exports){
-var WebSocketLib = _dereq_('ws');
-var util         = _dereq_('./util');
+(function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.Moonchild = f()}})(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
+var WebSocketLib = require('ws');
+var util         = require('./util');
 
 function createChannel(port) {
   // add listener from server
@@ -66,12 +66,12 @@ module.exports = {
   createChannel: createChannel
 };
 
-},{"./util":4,"ws":9}],2:[function(_dereq_,module,exports){
+},{"./util":4,"ws":9}],2:[function(require,module,exports){
 'use strict';
 
-var _ = _dereq_('underscore'),
-    esprima = _dereq_('esprima'),
-    estraverse = _dereq_('estraverse');
+var _ = require('underscore'),
+    esprima = require('esprima'),
+    estraverse = require('estraverse');
 
 var MAGIC_CHAR = '^';
 
@@ -168,15 +168,15 @@ module.exports = {
   parse: parse
 };
 
-},{"esprima":6,"estraverse":7,"underscore":8}],3:[function(_dereq_,module,exports){
+},{"esprima":6,"estraverse":7,"underscore":8}],3:[function(require,module,exports){
 'use strict';
 
-var _ = _dereq_('underscore'),
-    parser = _dereq_('./metadata'),
-    estraverse = _dereq_('estraverse'),
-    expanders = _dereq_('../third_party/expanders'),
-    util = _dereq_('./util.js'),
-    createChannel = _dereq_('./channel.js').createChannel;
+var _ = require('underscore'),
+    parser = require('./metadata'),
+    estraverse = require('estraverse'),
+    expanders = require('../third_party/expanders'),
+    util = require('./util.js'),
+    createChannel = require('./channel.js').createChannel;
 
 var globalHooks = {},
     globalExtensions = {},
@@ -388,7 +388,7 @@ module.exports = {
   getChannel: getChannel
 };
 
-},{"../third_party/expanders":10,"./channel.js":1,"./metadata":2,"./util.js":4,"estraverse":7,"underscore":8}],4:[function(_dereq_,module,exports){
+},{"../third_party/expanders":10,"./channel.js":1,"./metadata":2,"./util.js":4,"estraverse":7,"underscore":8}],4:[function(require,module,exports){
 function getParameterByName(name) {
     name = name.replace(/[\[]/, "\\[").replace(/[\]]/, "\\]");
     var regex = new RegExp("[\\?&]" + name + "=([^&#]*)"),
@@ -413,10 +413,10 @@ module.exports = {
   formatString: formatString
 };
 
-},{}],5:[function(_dereq_,module,exports){
-module.exports = _dereq_('./lib/moonchild');
+},{}],5:[function(require,module,exports){
+module.exports = require('./lib/moonchild');
 
-},{"./lib/moonchild":3}],6:[function(_dereq_,module,exports){
+},{"./lib/moonchild":3}],6:[function(require,module,exports){
 /*
   Copyright (C) 2013 Ariya Hidayat <ariya.hidayat@gmail.com>
   Copyright (C) 2013 Thaddee Tyl <thaddee.tyl@gmail.com>
@@ -4248,7 +4248,7 @@ parseStatement: true, parseSourceElement: true */
 }));
 /* vim: set sw=4 ts=4 et tw=80 : */
 
-},{}],7:[function(_dereq_,module,exports){
+},{}],7:[function(require,module,exports){
 /*
   Copyright (C) 2012-2013 Yusuke Suzuki <utatane.tea@gmail.com>
   Copyright (C) 2012 Ariya Hidayat <ariya.hidayat@gmail.com>
@@ -4939,7 +4939,7 @@ parseStatement: true, parseSourceElement: true */
 }));
 /* vim: set sw=4 ts=4 et tw=80 : */
 
-},{}],8:[function(_dereq_,module,exports){
+},{}],8:[function(require,module,exports){
 //     Underscore.js 1.8.3
 //     http://underscorejs.org
 //     (c) 2009-2015 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
@@ -6489,7 +6489,7 @@ parseStatement: true, parseSourceElement: true */
   }
 }.call(this));
 
-},{}],9:[function(_dereq_,module,exports){
+},{}],9:[function(require,module,exports){
 
 /**
  * Module dependencies.
@@ -6534,9 +6534,9 @@ function ws(uri, protocols, opts) {
 
 if (WebSocket) ws.prototype = WebSocket.prototype;
 
-},{}],10:[function(_dereq_,module,exports){
+},{}],10:[function(require,module,exports){
 (function (global){
-!function(e){if("object"==typeof exports&&"undefined"!=typeof module)module.exports=e();else if("function"==typeof define&&define.amd)define([],e);else{var f;"undefined"!=typeof window?f=window:"undefined"!=typeof global?f=global:"undefined"!=typeof self&&(f=self),f.expanders=e()}}(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof _dereq_=="function"&&_dereq_;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof _dereq_=="function"&&_dereq_;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(_dereq_,module,exports){
+!function(e){if("object"==typeof exports&&"undefined"!=typeof module)module.exports=e();else if("function"==typeof define&&define.amd)define([],e);else{var f;"undefined"!=typeof window?f=window:"undefined"!=typeof global?f=global:"undefined"!=typeof self&&(f=self),f.expanders=e()}}(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(_dereq_,module,exports){
 /* global -Symbol, -WeakMap */
 /* jshint -W053 */
 
@@ -7735,7 +7735,6 @@ defineProperty(WeakMapPoly.prototype, toStringTagSymbol, d('c', 'WeakMap'));
 
 },{"./is-native-implemented":20,"d":22,"es5-ext/object/set-prototype-of":38,"es5-ext/object/valid-object":42,"es5-ext/object/valid-value":43,"es6-iterator/for-of":49,"es6-iterator/get":50,"es6-symbol":2}]},{},[1])(1)
 });
-}).call(this,typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}]},{},[5])
-(5)
+}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+},{}]},{},[5])(5)
 });

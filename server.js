@@ -27,8 +27,8 @@ function handleRequest(req, res) {
 
 function tryNextPort(err) {
   if (err.code == 'EADDRINUSE' || err.code == 'EACCES') {
-    port += 1;
-    server.listen(port);
+    httpPort += 1;
+    server.listen(httpPort);
     // channel = ws.WebSocket("ws://localhost:" + port);
   }
 }
@@ -40,7 +40,7 @@ function sendData(messageType, data) {
   message   = JSON.stringify(data);
 
   channel.clients.forEach(function (client) {
-    console.log('sending message', message);
+    console.log('sending message');
     client.send(message);
   });
 }
@@ -51,7 +51,7 @@ function sendFile(filePath) {
       console.log(err);
     } else {
       console.log("sending file %s to editor!", filePath);
-      sendData("fileLoad", {content: data});
+      sendData("fileLoad", {content: data, filePath: filePath});
     }
   });
 }
@@ -78,7 +78,7 @@ channel.on('connection', function (client) {
     var data = JSON.parse(message);
 
     if (data.type === "saveFile") {
-      console.log("received request to save file. Purposefully ignoring this for now");
+      fs.writeFile(data.filePath, data.content);
     }
   });
 });

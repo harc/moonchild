@@ -4,16 +4,19 @@ function createFileLoader (moonchild, channel) {
   // assuming that the editor doesn't get changed
   // weird stuff will happen if the editor -does- get changed
   var editor = moonchild.getEditor()._codeMirror;
+  var filePath;
 
   channel.on("fileLoad", function (messageData) {
     // assuming JSON structure of form
     // {
     //   ...
-    //   text: ""
+    //   content: "",
+    //   filePath: "bla.js" 
     //   ...
     // }
 
     var text = messageData.content;
+    filePath = messageData.filePath;
 
     editor.setValue(text);
 
@@ -35,9 +38,8 @@ function createFileLoader (moonchild, channel) {
     // if (event.ctrlKey && event.key === "s") {
     if (event.ctrlKey && event.which === keycodes.s) {
       event.preventDefault();
-      console.log("saving! (purposefully ignored by the server at the moment)");
 
-      channel.send("saveFile", {content: editor.value});
+      channel.send("saveFile", {content: editor.getValue(), filePath: filePath});
     }
   });
 
