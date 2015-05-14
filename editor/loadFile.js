@@ -42,12 +42,6 @@ function createFileLoader (moonchild, channel) {
       channel.send("saveFile", {content: editor.getValue(), filePath: filePath});
     }
   });
-
-  // var someData = {data: "nothing yet!!"};
-  // and second, moonchild on ctrl+s
-  // channel.send("save", someData);
-
-
 }
 
 function loadText(editor, text) {

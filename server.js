@@ -1,16 +1,13 @@
-var Server = require('node-static').Server,
-    http = require('http'),
-    createChannel = require('./server/channel.js').createChannel,
-    onConnection = require("./server/fileLoader.js").onConnection;
+var Server           = require('node-static').Server;
+var http             = require('http');
+var createChannel    = require('./server/channel.js').createChannel;
+var createFileloader = require("./server/fileloader.js").createFileloader;
 
-var port       = 8080;
-var fileServer = new(Server)('.');
-var server     = http.createServer(handleRequest);
-
-var channel    = createChannel({
-  server: server,
-  onConnection: onConnection
-});
+var port             = 8080;
+var fileServer       = new(Server)('.');
+var server           = http.createServer(handleRequest);
+var channel          = createChannel(server);
+var fileloader       = createFileloader(channel);
 
 function handleRequest(req, res) {
   req.addListener('end', function() {
