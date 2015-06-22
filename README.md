@@ -94,3 +94,13 @@ moonchild.on('display', function(ast, comments) {
   // `moonchild.addWidget`.
 });
 ```
+
+## References
+
+[Ko, A. J.](https://faculty.washington.edu/ajko/) and Myers, B. A. (2006), [Barista: An Implementation Framework for Enabling New Tools, Interaction Techniques and Views in Code Editors](https://faculty.washington.edu/ajko/papers/Ko2006Barista.pdf), CHI 2006. [_Project page_](https://faculty.washington.edu/ajko/barista.shtml)
+
+[Baecker, R](http://ron.taglab.ca/). and Marcus, A., [Design Principles for the Enhanced Presentation of Computer Program Source Text](http://www.diku.dk/OLD/undervisning/2001f/f01.639/baecker.pdf), CHI (1986), 51-58.
+
+[McDirmid, Sean](http://research.microsoft.com/en-us/people/smcdirm/), [Experiments in Code Typography](http://research.microsoft.com/en-us/projects/liveprogramming/typography.aspx), August 2014.
+
+Eisenberg, A. D. and Kiczales, G., [Expressive programs through presentation extension](http://www.cs.ubc.ca/~ade/research/ade-aosd.07.pdf). In Proc. of 6th Int’l Conf. on Aspect-Oriented Software Development (AOSD 2007), pages 73–84. ACM, 2007.
