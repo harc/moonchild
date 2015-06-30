@@ -3,7 +3,10 @@ var lineWidgets = [];
 Moonchild.on('parse', function(ast) {
   var tests = {};
 
-  _.invoke(lineWidgets, 'clear');  // Clear widgets from the last parse.
+  // Tell codemirror to clear all widgets, and remove all widget references.
+  // At every edit, all widgets are removed and then rerendered.
+  _.invoke(lineWidgets, 'clear');
+  lineWidgets = [];
 
   if (!options.collectTests) return;
 
@@ -17,7 +20,7 @@ Moonchild.on('parse', function(ast) {
 
   // Find functions that have tests, and run the tests.
   ast.where({ 'type': 'FunctionDeclaration' }).each(function(node) {
-    if (node.id.name in tests) {    
+    if (node.id.name in tests) {
       var loc = esLocToCm(node.loc.start);
       var el = createElement('div', { 'class': 'test-result' }, 'Tests');
       var widget = codeMirror.addLineWidget(loc.line, el, { above: true });
@@ -31,6 +34,6 @@ Moonchild.on('parse', function(ast) {
         result = true;
       } catch(e) {}
       el.classList.toggle('ok', !!result);
-    }    
+    }
   });
 });
