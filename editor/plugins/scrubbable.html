@@ -64,8 +64,9 @@
   Moonchild.registerExtension('scrubble', function(moonchild) {
     moonchild.on('parse', function(ast) {
       ast.where({ 'type': 'Literal' }).each(function(node) {
-        if (_.isNumber(node.value))
+        if (_.isNumber(node.value)) {
           moonchild.addWidget(moonchild.REPLACE, node, ScrubbableWidget);
+        }
       });
     });
   });

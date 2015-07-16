@@ -1,4 +1,72 @@
 !function(e){if("object"==typeof exports)module.exports=e();else if("function"==typeof define&&define.amd)define(e);else{var o;"undefined"!=typeof window?o=window:"undefined"!=typeof global?o=global:"undefined"!=typeof self&&(o=self),o.Moonchild=e()}}(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);throw new Error("Cannot find module '"+o+"'")}var f=n[o]={exports:{}};t[o][0].call(f.exports,function(e){var n=t[o][1][e];return s(n?n:e)},f,f.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(_dereq_,module,exports){
+var WebSocketLib = _dereq_('ws');
+var util         = _dereq_('./util');
+
+function createChannel(port) {
+  // add listener from server
+  // channel.on("eventName", callback)
+  // send stuff to server
+  // channel.send("eventName", data)
+
+  var channel   = Object.create(null);
+
+  var url       = util.formatString("ws://localhost:{port}/editor/", {port: port});
+  var ws        = new WebSocketLib(url);
+  var listeners = {};
+
+  console.log("Websocket connecting to %s", url);
+
+  ws.onmessage = function (message) {
+    // Doesn't handle cyclic values
+    var data = JSON.parse(message.data);
+
+    // expects "data" to have .type
+    var type = data.type;
+
+    if (type in listeners) {
+      listeners[type].forEach(function (listener) {
+        listener(data);
+      });
+    } else {
+      console.log(util.formatString("The server is shouting '{type}'! But no-one is there to hear him...", {type: type}));
+    }
+  };
+
+  ws.onopen = function () {
+    console.log("open!");
+  };
+
+  // handle ws.on('error') here later..
+  // ws.onerror = function (error) {
+  //
+  // };
+
+  channel.on = function (messageType, callback) {
+    if (messageType in listeners) {
+      listeners[messageType].push(callback);
+    } else {
+      listeners[messageType] = [callback];
+    }
+  };
+
+  channel.send = function (messageType, data) {
+    var message;
+    data.type = messageType;
+
+    // Doesn't handle cyclic values
+    message = JSON.stringify(data);
+
+    ws.send(message);
+  };
+
+  return channel;
+}
+
+module.exports = {
+  createChannel: createChannel
+};
+
+},{"./util":4,"ws":9}],2:[function(_dereq_,module,exports){
 'use strict';
 
 var _ = _dereq_('underscore'),
@@ -100,17 +168,22 @@ module.exports = {
   parse: parse
 };
 
-},{"esprima":4,"estraverse":5,"underscore":6}],2:[function(_dereq_,module,exports){
+},{"esprima":6,"estraverse":7,"underscore":8}],3:[function(_dereq_,module,exports){
 'use strict';
 
 var _ = _dereq_('underscore'),
     parser = _dereq_('./metadata'),
     estraverse = _dereq_('estraverse'),
-    expanders = _dereq_('../third_party/expanders');
+    expanders = _dereq_('../third_party/expanders'),
+    util = _dereq_('./util.js'),
+    createChannel = _dereq_('./channel.js').createChannel;
 
 var globalHooks = {},
     globalExtensions = {},
     globalEditor = {};
+
+var port = util.getParameterByName("port") || 8080;
+var channel = createChannel(port);
 
 var widgetExpander = expanders.createExpander('displayWidget');
 var exportsExpander = expanders.createExpander('extensionId');
@@ -164,13 +237,21 @@ Extension.prototype.REPLACE = 'replace';
 // performed, `visitor` will be called with the hook-specific arguments.
 function addHook(id, hookState, hookName, func) {
   var hooks;
-  if (id == null) {
+
+  if (!id) {
     id = _.uniqueId('hook-');
   }
-  hooks = hookState[hookName] != null ? hookState[hookName] : hookState[hookName] = {};
-  if (hooks[id] == null) {
+
+  if (hookState[hookName]) {
+    hooks = hookState[hookName];
+  } else {
+    hooks = hookState[hookName] = {};
+  }
+
+  if (!hooks[id]) {
     hooks[id] = [];
   }
+
   hooks[id].push(func);
 }
 
@@ -184,13 +265,18 @@ function invokeHook(hook, args) {
 
 function initializeExtension(ext, deps, initFn) {
   var result;
-  result = initFn != null ? initFn.apply(null, [ext].concat(deps)) : void 0;
-  if (result != null) {
+
+  if (initFn) {
+    result = initFn.apply(null, [ext].concat(deps));
+  }
+
+  if (result) {
     if (_.isObject(result)) {
       return result;
     }
     throw new TypeError('Invalid export from extension (must be an object)');
   }
+
   return {};
 }
 
@@ -200,17 +286,22 @@ function registerExtension(id, deps, initFn) {
     initFn = deps;
     deps = [];
   }
+
   deps = deps.map(function(name) {
     if (!(name in globalExtensions)) {
       throw new Error('Unmet dependency ' + name);
     }
+
     return globalExtensions[name].exports;
   });
+
   var ext = new Extension(id);
   ext.exports = initializeExtension(ext, deps, initFn);
+
   // Allow the exports object can be traced back to the extension itself.
   exportsExpander.set(ext.exports, 'extensionId', ext._id);
   globalExtensions[ext._id] = ext;
+
   return ext;
 }
 
@@ -224,11 +315,13 @@ function getHookArgs(ast) {
   // For API convenience, the tree is currently passed as an
   // Underscore-wrapped list of nodes, but this should change.
   var nodes = [];
+
   estraverse.traverse(ast, {
     enter: function(node) {
       return nodes.push(node);
     }
   });
+
   return [_.chain(nodes), _.chain(ast.comments)];
 }
 
@@ -240,14 +333,7 @@ function applySafely(func, args) {
   }
 }
 
-function onChange(newValue) {
-  var tree;
-  try {
-    tree = parse(globalHooks, newValue);
-  } catch (e) {
-    console.log(e);  // eslint-disable-line no-console
-    return;
-  }
+function runDisplayHooks(tree) {
   // Run the display hooks.
   // TODO: This should be moved into a function that can be invoked by the
   // editor plugin.
@@ -256,6 +342,19 @@ function onChange(newValue) {
 
   // Run the render hooks.
   invokeHook('render', hookArgs);
+}
+
+function onChange(newValue) {
+  var tree;
+
+  try {
+    tree = parse(globalHooks, newValue);
+  } catch (e) {
+    console.log(e);  // eslint-disable-line no-console
+    return;
+  }
+
+  runDisplayHooks(tree);
 }
 
 function setEditor(editor) {
@@ -267,6 +366,16 @@ function getEditor() {
   return globalEditor;
 }
 
+function getChannel() {
+  return channel;
+}
+
+function poke() {
+  // poke invoked onChange, this can be used to update Moonchild when
+  // text was set in a non-standard way
+  onChange();
+}
+
 module.exports = {
   on: _.partial(addHook, null, globalHooks),
   onChange: onChange,  // TODO: Get rid of this.
@@ -274,13 +383,40 @@ module.exports = {
   registerExtension: registerExtension,
   traverse: estraverse.traverse,
   setEditor: setEditor,
-  getEditor: getEditor
+  getEditor: getEditor,
+  poke: poke,
+  getChannel: getChannel
 };
 
-},{"../third_party/expanders":7,"./metadata":1,"estraverse":5,"underscore":6}],3:[function(_dereq_,module,exports){
+},{"../third_party/expanders":10,"./channel.js":1,"./metadata":2,"./util.js":4,"estraverse":7,"underscore":8}],4:[function(_dereq_,module,exports){
+function getParameterByName(name) {
+    name = name.replace(/[\[]/, "\\[").replace(/[\]]/, "\\]");
+    var regex = new RegExp("[\\?&]" + name + "=([^&#]*)"),
+        results = regex.exec(location.search);
+    return results === null ? "" : decodeURIComponent(results[1].replace(/\+/g, " "));
+}
+
+function formatString(string, arguments) {
+  // formats string using an object
+  // formatString("hi {name}!", {name: "kiwi"}) -> "hi kiwi!"
+  var type = typeof arguments[0];
+
+  for (var r in arguments) {
+    string = string.replace(new RegExp("\\{" + r + "\\}", "gi"), arguments[r]);
+  }
+
+  return string;
+}
+
+module.exports = {
+  getParameterByName: getParameterByName,
+  formatString: formatString
+};
+
+},{}],5:[function(_dereq_,module,exports){
 module.exports = _dereq_('./lib/moonchild');
 
-},{"./lib/moonchild":2}],4:[function(_dereq_,module,exports){
+},{"./lib/moonchild":3}],6:[function(_dereq_,module,exports){
 /*
   Copyright (C) 2013 Ariya Hidayat <ariya.hidayat@gmail.com>
   Copyright (C) 2013 Thaddee Tyl <thaddee.tyl@gmail.com>
@@ -4112,7 +4248,7 @@ parseStatement: true, parseSourceElement: true */
 }));
 /* vim: set sw=4 ts=4 et tw=80 : */
 
-},{}],5:[function(_dereq_,module,exports){
+},{}],7:[function(_dereq_,module,exports){
 /*
   Copyright (C) 2012-2013 Yusuke Suzuki <utatane.tea@gmail.com>
   Copyright (C) 2012 Ariya Hidayat <ariya.hidayat@gmail.com>
@@ -4803,8 +4939,8 @@ parseStatement: true, parseSourceElement: true */
 }));
 /* vim: set sw=4 ts=4 et tw=80 : */
 
-},{}],6:[function(_dereq_,module,exports){
-//     Underscore.js 1.8.2
+},{}],8:[function(_dereq_,module,exports){
+//     Underscore.js 1.8.3
 //     http://underscorejs.org
 //     (c) 2009-2015 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
 //     Underscore may be freely distributed under the MIT license.
@@ -4861,7 +4997,7 @@ parseStatement: true, parseSourceElement: true */
   }
 
   // Current version.
-  _.VERSION = '1.8.2';
+  _.VERSION = '1.8.3';
 
   // Internal function that returns an efficient (for current engines) version
   // of the passed-in callback, to be repeatedly applied in other Underscore
@@ -4928,12 +5064,20 @@ parseStatement: true, parseSourceElement: true */
     return result;
   };
 
+  var property = function(key) {
+    return function(obj) {
+      return obj == null ? void 0 : obj[key];
+    };
+  };
+
   // Helper for collection methods to determine whether a collection
   // should be iterated as an array or as an object
   // Related: http://people.mozilla.org/~jorendorff/es6-draft.html#sec-tolength
+  // Avoids a very nasty iOS 8 JIT bug on ARM-64. #2094
   var MAX_ARRAY_INDEX = Math.pow(2, 53) - 1;
+  var getLength = property('length');
   var isArrayLike = function(collection) {
-    var length = collection && collection.length;
+    var length = getLength(collection);
     return typeof length == 'number' && length >= 0 && length <= MAX_ARRAY_INDEX;
   };
 
@@ -5058,11 +5202,12 @@ parseStatement: true, parseSourceElement: true */
     return false;
   };
 
-  // Determine if the array or object contains a given value (using `===`).
+  // Determine if the array or object contains a given item (using `===`).
   // Aliased as `includes` and `include`.
-  _.contains = _.includes = _.include = function(obj, target, fromIndex) {
+  _.contains = _.includes = _.include = function(obj, item, fromIndex, guard) {
     if (!isArrayLike(obj)) obj = _.values(obj);
-    return _.indexOf(obj, target, typeof fromIndex == 'number' && fromIndex) >= 0;
+    if (typeof fromIndex != 'number' || guard) fromIndex = 0;
+    return _.indexOf(obj, item, fromIndex) >= 0;
   };
 
   // Invoke a method (with arguments) on every item in a collection.
@@ -5286,7 +5431,7 @@ parseStatement: true, parseSourceElement: true */
   // Internal implementation of a recursive `flatten` function.
   var flatten = function(input, shallow, strict, startIndex) {
     var output = [], idx = 0;
-    for (var i = startIndex || 0, length = input && input.length; i < length; i++) {
+    for (var i = startIndex || 0, length = getLength(input); i < length; i++) {
       var value = input[i];
       if (isArrayLike(value) && (_.isArray(value) || _.isArguments(value))) {
         //flatten current level of array or arguments object
@@ -5317,7 +5462,6 @@ parseStatement: true, parseSourceElement: true */
   // been sorted, you have the option of using a faster algorithm.
   // Aliased as `unique`.
   _.uniq = _.unique = function(array, isSorted, iteratee, context) {
-    if (array == null) return [];
     if (!_.isBoolean(isSorted)) {
       context = iteratee;
       iteratee = isSorted;
@@ -5326,7 +5470,7 @@ parseStatement: true, parseSourceElement: true */
     if (iteratee != null) iteratee = cb(iteratee, context);
     var result = [];
     var seen = [];
-    for (var i = 0, length = array.length; i < length; i++) {
+    for (var i = 0, length = getLength(array); i < length; i++) {
       var value = array[i],
           computed = iteratee ? iteratee(value, i, array) : value;
       if (isSorted) {
@@ -5353,10 +5497,9 @@ parseStatement: true, parseSourceElement: true */
   // Produce an array that contains every item shared between all the
   // passed-in arrays.
   _.intersection = function(array) {
-    if (array == null) return [];
     var result = [];
     var argsLength = arguments.length;
-    for (var i = 0, length = array.length; i < length; i++) {
+    for (var i = 0, length = getLength(array); i < length; i++) {
       var item = array[i];
       if (_.contains(result, item)) continue;
       for (var j = 1; j < argsLength; j++) {
@@ -5385,7 +5528,7 @@ parseStatement: true, parseSourceElement: true */
   // Complement of _.zip. Unzip accepts an array of arrays and groups
   // each array's elements on shared indices
   _.unzip = function(array) {
-    var length = array && _.max(array, 'length').length || 0;
+    var length = array && _.max(array, getLength).length || 0;
     var result = Array(length);
 
     for (var index = 0; index < length; index++) {
@@ -5399,7 +5542,7 @@ parseStatement: true, parseSourceElement: true */
   // the corresponding values.
   _.object = function(list, values) {
     var result = {};
-    for (var i = 0, length = list && list.length; i < length; i++) {
+    for (var i = 0, length = getLength(list); i < length; i++) {
       if (values) {
         result[list[i]] = values[i];
       } else {
@@ -5409,42 +5552,11 @@ parseStatement: true, parseSourceElement: true */
     return result;
   };
 
-  // Return the position of the first occurrence of an item in an array,
-  // or -1 if the item is not included in the array.
-  // If the array is large and already in sort order, pass `true`
-  // for **isSorted** to use binary search.
-  _.indexOf = function(array, item, isSorted) {
-    var i = 0, length = array && array.length;
-    if (typeof isSorted == 'number') {
-      i = isSorted < 0 ? Math.max(0, length + isSorted) : isSorted;
-    } else if (isSorted && length) {
-      i = _.sortedIndex(array, item);
-      return array[i] === item ? i : -1;
-    }
-    if (item !== item) {
-      return _.findIndex(slice.call(array, i), _.isNaN);
-    }
-    for (; i < length; i++) if (array[i] === item) return i;
-    return -1;
-  };
-
-  _.lastIndexOf = function(array, item, from) {
-    var idx = array ? array.length : 0;
-    if (typeof from == 'number') {
-      idx = from < 0 ? idx + from + 1 : Math.min(idx, from + 1);
-    }
-    if (item !== item) {
-      return _.findLastIndex(slice.call(array, 0, idx), _.isNaN);
-    }
-    while (--idx >= 0) if (array[idx] === item) return idx;
-    return -1;
-  };
-
   // Generator function to create the findIndex and findLastIndex functions
-  function createIndexFinder(dir) {
+  function createPredicateIndexFinder(dir) {
     return function(array, predicate, context) {
       predicate = cb(predicate, context);
-      var length = array != null && array.length;
+      var length = getLength(array);
       var index = dir > 0 ? 0 : length - 1;
       for (; index >= 0 && index < length; index += dir) {
         if (predicate(array[index], index, array)) return index;
@@ -5454,16 +5566,15 @@ parseStatement: true, parseSourceElement: true */
   }
 
   // Returns the first index on an array-like that passes a predicate test
-  _.findIndex = createIndexFinder(1);
-
-  _.findLastIndex = createIndexFinder(-1);
+  _.findIndex = createPredicateIndexFinder(1);
+  _.findLastIndex = createPredicateIndexFinder(-1);
 
   // Use a comparator function to figure out the smallest index at which
   // an object should be inserted so as to maintain order. Uses binary search.
   _.sortedIndex = function(array, obj, iteratee, context) {
     iteratee = cb(iteratee, context, 1);
     var value = iteratee(obj);
-    var low = 0, high = array.length;
+    var low = 0, high = getLength(array);
     while (low < high) {
       var mid = Math.floor((low + high) / 2);
       if (iteratee(array[mid]) < value) low = mid + 1; else high = mid;
@@ -5471,11 +5582,43 @@ parseStatement: true, parseSourceElement: true */
     return low;
   };
 
+  // Generator function to create the indexOf and lastIndexOf functions
+  function createIndexFinder(dir, predicateFind, sortedIndex) {
+    return function(array, item, idx) {
+      var i = 0, length = getLength(array);
+      if (typeof idx == 'number') {
+        if (dir > 0) {
+            i = idx >= 0 ? idx : Math.max(idx + length, i);
+        } else {
+            length = idx >= 0 ? Math.min(idx + 1, length) : idx + length + 1;
+        }
+      } else if (sortedIndex && idx && length) {
+        idx = sortedIndex(array, item);
+        return array[idx] === item ? idx : -1;
+      }
+      if (item !== item) {
+        idx = predicateFind(slice.call(array, i, length), _.isNaN);
+        return idx >= 0 ? idx + i : -1;
+      }
+      for (idx = dir > 0 ? i : length - 1; idx >= 0 && idx < length; idx += dir) {
+        if (array[idx] === item) return idx;
+      }
+      return -1;
+    };
+  }
+
+  // Return the position of the first occurrence of an item in an array,
+  // or -1 if the item is not included in the array.
+  // If the array is large and already in sort order, pass `true`
+  // for **isSorted** to use binary search.
+  _.indexOf = createIndexFinder(1, _.findIndex, _.sortedIndex);
+  _.lastIndexOf = createIndexFinder(-1, _.findLastIndex);
+
   // Generate an integer Array containing an arithmetic progression. A port of
   // the native Python `range()` function. See
   // [the Python documentation](http://docs.python.org/library/functions.html#range).
   _.range = function(start, stop, step) {
-    if (arguments.length <= 1) {
+    if (stop == null) {
       stop = start || 0;
       start = 0;
     }
@@ -5854,6 +5997,15 @@ parseStatement: true, parseSourceElement: true */
   // Fill in a given object with default properties.
   _.defaults = createAssigner(_.allKeys, true);
 
+  // Creates an object that inherits from the given prototype object.
+  // If additional properties are provided then they will be added to the
+  // created object.
+  _.create = function(prototype, props) {
+    var result = baseCreate(prototype);
+    if (props) _.extendOwn(result, props);
+    return result;
+  };
+
   // Create a (shallow-cloned) duplicate of an object.
   _.clone = function(obj) {
     if (!_.isObject(obj)) return obj;
@@ -5931,7 +6083,7 @@ parseStatement: true, parseSourceElement: true */
     }
     // Assume equality for cyclic structures. The algorithm for detecting cyclic
     // structures is adapted from ES 5.1 section 15.12.3, abstract operation `JO`.
-    
+
     // Initializing stack of traversed objects.
     // It's done here since we only need them for objects and arrays comparison.
     aStack = aStack || [];
@@ -6082,11 +6234,7 @@ parseStatement: true, parseSourceElement: true */
 
   _.noop = function(){};
 
-  _.property = function(key) {
-    return function(obj) {
-      return obj == null ? void 0 : obj[key];
-    };
-  };
+  _.property = property;
 
   // Generates a function for a given object that returns a given property.
   _.propertyOf = function(obj) {
@@ -6095,7 +6243,7 @@ parseStatement: true, parseSourceElement: true */
     };
   };
 
-  // Returns a predicate for checking whether an object has a given set of 
+  // Returns a predicate for checking whether an object has a given set of
   // `key:value` pairs.
   _.matcher = _.matches = function(attrs) {
     attrs = _.extendOwn({}, attrs);
@@ -6322,7 +6470,7 @@ parseStatement: true, parseSourceElement: true */
   // Provide unwrapping proxy for some methods used in engine operations
   // such as arithmetic and JSON stringification.
   _.prototype.valueOf = _.prototype.toJSON = _.prototype.value;
-  
+
   _.prototype.toString = function() {
     return '' + this._wrapped;
   };
@@ -6341,7 +6489,52 @@ parseStatement: true, parseSourceElement: true */
   }
 }.call(this));
 
-},{}],7:[function(_dereq_,module,exports){
+},{}],9:[function(_dereq_,module,exports){
+
+/**
+ * Module dependencies.
+ */
+
+var global = (function() { return this; })();
+
+/**
+ * WebSocket constructor.
+ */
+
+var WebSocket = global.WebSocket || global.MozWebSocket;
+
+/**
+ * Module exports.
+ */
+
+module.exports = WebSocket ? ws : null;
+
+/**
+ * WebSocket constructor.
+ *
+ * The third `opts` options object gets ignored in web browsers, since it's
+ * non-standard, and throws a TypeError if passed to the constructor.
+ * See: https://github.com/einaros/ws/issues/227
+ *
+ * @param {String} uri
+ * @param {Array} protocols (optional)
+ * @param {Object) opts (optional)
+ * @api public
+ */
+
+function ws(uri, protocols, opts) {
+  var instance;
+  if (protocols) {
+    instance = new WebSocket(uri, protocols);
+  } else {
+    instance = new WebSocket(uri);
+  }
+  return instance;
+}
+
+if (WebSocket) ws.prototype = WebSocket.prototype;
+
+},{}],10:[function(_dereq_,module,exports){
 (function (global){
 !function(e){if("object"==typeof exports&&"undefined"!=typeof module)module.exports=e();else if("function"==typeof define&&define.amd)define([],e);else{var f;"undefined"!=typeof window?f=window:"undefined"!=typeof global?f=global:"undefined"!=typeof self&&(f=self),f.expanders=e()}}(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof _dereq_=="function"&&_dereq_;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof _dereq_=="function"&&_dereq_;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(_dereq_,module,exports){
 /* global -Symbol, -WeakMap */
@@ -7543,6 +7736,6 @@ defineProperty(WeakMapPoly.prototype, toStringTagSymbol, d('c', 'WeakMap'));
 },{"./is-native-implemented":20,"d":22,"es5-ext/object/set-prototype-of":38,"es5-ext/object/valid-object":42,"es5-ext/object/valid-value":43,"es6-iterator/for-of":49,"es6-iterator/get":50,"es6-symbol":2}]},{},[1])(1)
 });
 }).call(this,typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}]},{},[3])
-(3)
+},{}]},{},[5])
+(5)
 });
