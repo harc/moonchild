@@ -1,9 +1,13 @@
 var moonchild = Moonchild.registerExtension();
 Moonchild.setEditor(new Editor());
 
-var options = {};
+// global settings...
+// timeout before editor rerenders plugins
+var onChangeTimeout = 250;
 
+var options = {};
 var codeMirror;  // TODO: Get rid of this global.
+
 
 // Private helpers
 // ---------------
@@ -53,7 +57,7 @@ function renderNode(cm, node) {
 
 function Editor() {
   codeMirror = this._codeMirror = CodeMirror.fromTextArea($('textarea'));
-  codeMirror.on('change', _.debounce(editorOnChange, 250));
+  codeMirror.on('change', _.debounce(editorOnChange, onChangeTimeout));
 
   var render = _.partial(renderNode, codeMirror);
   moonchild.on('render', function(ast, comments) {
