@@ -163,7 +163,7 @@ Extension.prototype.REPLACE = 'replace';
 // Allows a client to hook the action named `hookName`. Every time the action
 // performed, `visitor` will be called with the hook-specific arguments.
 function addHook(id, hookState, hookName, func) {
-  var hooks = {};
+  var hooks;
 
   if (!id) {
     id = _.uniqueId('hook-');
@@ -172,7 +172,7 @@ function addHook(id, hookState, hookName, func) {
   if (hookState[hookName]) {
     hooks = hookState[hookName];
   } else {
-    hookState[hookName] = {};
+    hooks = hookState[hookName] = {};
   }
 
   if (!hooks[id]) {
