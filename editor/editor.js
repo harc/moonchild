@@ -8,10 +8,10 @@ var onChangeTimeout = 250;
 var options = {};
 var codeMirror;  // TODO: Get rid of this global.
 
+var fileLoader = createFileLoader(Moonchild, Moonchild.getChannel());
 
 // Private helpers
 // ---------------
-
 function $(sel) { return document.querySelector(sel); }
 function $$(sel) { return document.querySelectorAll(sel); }
 
@@ -31,7 +31,7 @@ function initializeExtensionToggles(cm) {
   function onClick(e) {
     toggle(this);
     e.preventDefault();
-    if (this.id == 'all') {
+    if (this.id === 'all') {
       for (var j = 0; j < controls.length; j++)
         toggle(controls[j], this.classList.contains('on'));
     }
