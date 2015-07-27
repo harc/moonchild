@@ -24,11 +24,3 @@ function createFileLoader (moonchild, channel) {
     moonchild.poke();
   });
 }
-
-function loadText(editor, text) {
-  console.log("Loading in some text");
-  console.log(globalEditor);
-  globalEditor._codeMirror.setValue(text);
-
-  onChange(text);
-}
