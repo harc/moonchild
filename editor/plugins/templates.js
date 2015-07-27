@@ -61,7 +61,7 @@ Moonchild.on('parse', function(ast) {
     }
     // Render the template preview.
     var templateString = node.declarations[0].init.value;
-    var templateData = node.metadata.value.sampleData
+    var templateData = node.metadata.value.sampleData;
     previewWidget.node.innerHTML = template(templateString, templateData);
 
     widgets.push(mark);
