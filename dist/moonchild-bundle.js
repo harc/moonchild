@@ -182,7 +182,7 @@ var globalHooks = {},
     globalExtensions = {},
     globalEditor = {};
 
-var port = util.getParameterByName("port") || 8081;
+var port = util.getParameterByName("port") || 8080;
 var channel = createChannel(port);
 
 var widgetExpander = expanders.createExpander('displayWidget');
