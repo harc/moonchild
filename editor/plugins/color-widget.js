@@ -7,7 +7,7 @@ function getMetadata(node, property) {
 
 function hasColorLiteral(node) {
   return getMetadata(node, 'type') == 'color' ||
-      (_.isString(node.value) && node.value.indexOf('#') == 0);
+      (_.isString(node.value) && node.value.indexOf('#') === 0);
 }
 
 addStyle({

@@ -15,7 +15,7 @@ function handleRequest(req, res) {
         res.end(String(err.status));
         return;
       }
-      console.log('%s - %s', req.url, res.message); 
+      console.log('%s - %s', req.url, res.message);
     });
   }).resume();
 }
@@ -24,6 +24,7 @@ function tryNextPort(err) {
   if (err.code == 'EADDRINUSE' || err.code == 'EACCES')
     server.listen(++port);
 }
+
 server.on('error', tryNextPort);
 server.on('listening', function() {
   server.removeListener('error', tryNextPort);

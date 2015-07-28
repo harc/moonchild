@@ -1,9 +1,13 @@
 var moonchild = Moonchild.registerExtension();
 Moonchild.setEditor(new Editor());
 
-var options = {};
+// global settings...
+// timeout before editor rerenders plugins
+var onChangeTimeout = 250;
 
-var codeMirror;  // TODO: Get rid of this global. 
+var options = {};
+var codeMirror;  // TODO: Get rid of this global.
+
 
 // Private helpers
 // ---------------
@@ -19,22 +23,24 @@ function toggle(el, value) {
   if (value !== undefined)
     el.classList.toggle('on', value);
   else
-    el.classList.toggle('on')
+    el.classList.toggle('on');
   options[el.id] = el.classList.contains('on');
 }
 
 function initializeExtensionToggles(cm) {
+  function onClick(e) {
+    toggle(this);
+    e.preventDefault();
+    if (this.id == 'all') {
+      for (var j = 0; j < controls.length; j++)
+        toggle(controls[j], this.classList.contains('on'));
+    }
+    Moonchild.onChange(cm.getValue());
+  }
+
   var controls = $$('#controls > div');
   for (var i = 0; i < controls.length; i++) {
-    controls[i].addEventListener('click', function(e) {
-      toggle(this);
-      e.preventDefault();
-      if (this.id == 'all') {
-        for (var j = 0; j < controls.length; j++)
-          toggle(controls[j], this.classList.contains('on'));
-      }
-      Moonchild.onChange(cm.getValue());
-    });
+    controls[i].addEventListener('click', onClick);
   }
 }
 
@@ -51,7 +57,7 @@ function renderNode(cm, node) {
 
 function Editor() {
   codeMirror = this._codeMirror = CodeMirror.fromTextArea($('textarea'));
-  codeMirror.on('change', _.debounce(editorOnChange, 250));
+  codeMirror.on('change', _.debounce(editorOnChange, onChangeTimeout));
 
   var render = _.partial(renderNode, codeMirror);
   moonchild.on('render', function(ast, comments) {
@@ -61,7 +67,7 @@ function Editor() {
 
   codeMirror.on('cursorActivity', function(cm, e) {
     var adjacentMarks = cm.findMarksAt(cm.getCursor());
-    if (adjacentMarks.length == 0 || !adjacentMarks[0].replacedWith)
+    if (adjacentMarks.length === 0 || !adjacentMarks[0].replacedWith)
       return;
 
     var markEl = widgetForMark(adjacentMarks[0]);
@@ -75,12 +81,12 @@ function Editor() {
 
 Editor.prototype.replaceRange = function(fromOffset, toOffset, text) {
   this._codeMirror.replaceRange(text, fromOffset, toOffset);
-}
+};
 
 Editor.prototype.insertText = function(offset, text) {
   this.replaceRange(offset, null, text);
-}
+};
 
 Editor.prototype.replaceNodeText = function(node, text) {
   this.replaceRange(esLocToCm(node.loc.start), esLocToCm(node.loc.end), text);
-}
+};

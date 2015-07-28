@@ -106,11 +106,11 @@ function renderWidget(cm, node, widgetInfo) {
       var loc = esLocToCm(pos == 'before' ? node.loc.start : node.loc.end);
       mark = cm.setBookmark(loc, { widget: el, insertLeft: true });
     } else {
-      throw new Error('Not handled!')
+      throw new Error('Not handled!');
     }
     marks.push(mark);
   }
-  widget.changed = function() { mark.changed(); }
+  widget.changed = function() { mark.changed(); };
   widget.render(el, node, widgetInfo.data);
   _.invoke(marks, 'changed');
 }
