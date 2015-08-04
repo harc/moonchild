@@ -6,7 +6,7 @@ var onConnection = require("./server/fileLoader").onConnection;
 var port         = 8080;
 var fileServer   = new Server('.');
 var server       = http.createServer(handleRequest);
-var channel      = new Channel(server);
+var channel      = new Channel({httpServer: server, type: Channel.server});
 
 channel.onConnection(onConnection);
 

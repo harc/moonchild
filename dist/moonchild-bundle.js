@@ -30,8 +30,8 @@ var webSocket = _dereq_("ws");
 // inside the callback, this refers to the channel.
 // channel.onConnection(callback);
 function Channel (config) {
-    var that                 = this;
-    this.listeners           = Object.create(null);
+    var that = this;
+    this.listeners = Object.create(null);
     this.connectionListeners = [];
 
     function onMessage (message) {
@@ -64,16 +64,16 @@ function Channel (config) {
     // on the server side, a channel gets passed an HttpServer, while on the client side it gets passed a port.
     // there are small distinctions to make between the server and the client
     // the server requires a different websocket constructor, and it talks to multiple clients instead of one.
-    if (typeof config === "object") {
-        this.websocket = new webSocket.Server({server: config});
-        this.type = "server";
-    } else if (typeof config === "number") {
-        this.websocket = new webSocket("ws://localhost:" + config + "/editor/");
-        this.type = "client";
+    if (config.type === Channel.server) {
+        this.websocket = new webSocket.Server({server: config.httpServer});
+        this.type = Channel.server;
+    } else if (config.type === Channel.client) {
+        this.websocket = new webSocket("ws://localhost:" + config.port + "/editor/");
+        this.type = Channel.client;
     }
 
-    // for some reason, there is an api difference between the client and the server websocket.
-    if (this.type === "server") {
+    // for some reason, the websocket api differs on the client from the server
+    if (this.type === Channel.server) {
         this.websocket.on("connection", onNewConnection);
     } else {
         this.websocket.open = onNewConnection;
@@ -92,10 +92,13 @@ Channel.prototype.on = function (messageType, callback) {
 
 Channel.prototype.send = function (messageType, data) {
     var message;
-    data.type = messageType;
-    message   = JSON.stringify(data);
 
-    if (this.type === "server") {
+    data.type = messageType;
+    message = JSON.stringify(data);
+
+    // on the server, send to all clients
+    // on the client, send to the server
+    if (this.type === Channel.server) {
         this.websocket.clients.forEach(function (client) {
             client.send(message);
         });
@@ -107,6 +110,9 @@ Channel.prototype.send = function (messageType, data) {
 Channel.prototype.onConnection = function(listener) {
     this.connectionListeners.push(listener);
 };
+
+Channel.server = "server";
+Channel.client = "client";
 
 module.exports = Channel;
 },{"ws":9}],2:[function(_dereq_,module,exports){
@@ -214,25 +220,25 @@ module.exports = {
 },{"esprima":6,"estraverse":7,"underscore":8}],3:[function(_dereq_,module,exports){
 'use strict';
 
-var _                = _dereq_('underscore');
-var parser           = _dereq_('./metadata');
-var estraverse       = _dereq_('estraverse');
-var expanders        = _dereq_('../third_party/expanders');
-var util             = _dereq_('./util');
-var Channel          = _dereq_('../common/channel');
+var _ = _dereq_('underscore');
+var parser = _dereq_('./metadata');
+var estraverse = _dereq_('estraverse');
+var expanders = _dereq_('../third_party/expanders');
+var util = _dereq_('./util');
+var Channel = _dereq_('../common/channel');
 
-var globalHooks      = {};
+var globalHooks = {};
 var globalExtensions = {};
-var globalEditor     = {};
+var globalEditor = {};
 
-var portParam        = parseInt(util.getParameterByName("port"), 10);
+var portParam = parseInt(util.getParameterByName('port'), 10);
 // check for invalid ports passed, if an invalid port was passed, use the default port 8080
-var port             = isNaN(portParam) ? 8080 : portParam;
+var port = isNaN(portParam) ? 8080 : portParam;
 
-var channel          = new Channel(port);
+var channel = new Channel({port: port, type: Channel.client});
 
-var widgetExpander   = expanders.createExpander('displayWidget');
-var exportsExpander  = expanders.createExpander('extensionId');
+var widgetExpander = expanders.createExpander('displayWidget');
+var exportsExpander = expanders.createExpander('extensionId');
 
 // Encapsulates the extension API that is provided to a single extension.
 function Extension(id) {
@@ -421,15 +427,18 @@ module.exports = {
 };
 
 },{"../common/channel":1,"../third_party/expanders":10,"./metadata":2,"./util":4,"estraverse":7,"underscore":8}],4:[function(_dereq_,module,exports){
-// taken from
-// http://blog.stevenlevithan.com/archives/parseuri
-function parseUri (str) {
-  var o   = parseUri.options,
-      m   = o.parser[o.strictMode ? "strict" : "loose"].exec(str),
-      uri = {},
-      i   = 14;
+'use strict';
 
-  while (i--) uri[o.key[i]] = m[i] || "";
+// parseUri 1.2.2
+// (c) Steven Levithan <stevenlevithan.com>
+// MIT License
+function parseUri (str) {
+  var o = parseUri.options,
+      m = o.parser[o.strictMode ? 'strict' : 'loose'].exec(str),
+      uri = {},
+      i = 14;
+
+  while (i--) uri[o.key[i]] = m[i] || '';
 
   uri[o.q.name] = {};
   uri[o.key[12]].replace(o.q.parser, function ($0, $1, $2) {
@@ -437,42 +446,27 @@ function parseUri (str) {
   });
 
   return uri;
-};
+}
 
 parseUri.options = {
   strictMode: false,
-  key: ["source","protocol","authority","userInfo","user","password","host","port","relative","path","directory","file","query","anchor"],
-  q:   {
-    name:   "queryKey",
+  key: ['source', 'protocol', 'authority', 'userInfo', 'user', 'password', 'host', 'port', 'relative', 'path', 'directory', 'file', 'query', 'anchor'],
+  q: {
+    name: 'queryKey',
     parser: /(?:^|&)([^&=]*)=?([^&]*)/g
   },
   parser: {
     strict: /^(?:([^:\/?#]+):)?(?:\/\/((?:(([^:@]*):?([^:@]*))?@)?([^:\/?#]*)(?::(\d*))?))?((((?:[^?#\/]*\/)*)([^?#]*))(?:\?([^#]*))?(?:#(.*))?)/,
-    loose:  /^(?:(?![^:@]+:[^:@\/]*@)([^:\/?#.]+):)?(?:\/\/)?((?:(([^:@]*):?([^:@]*))?@)?([^:\/?#]*)(?::(\d*))?)(((\/(?:[^?#](?![^?#\/]*\.[^?#\/.]+(?:[?#]|$)))*\/?)?([^?#\/]*))(?:\?([^#]*))?(?:#(.*))?)/
+    loose: /^(?:(?![^:@]+:[^:@\/]*@)([^:\/?#.]+):)?(?:\/\/)?((?:(([^:@]*):?([^:@]*))?@)?([^:\/?#]*)(?::(\d*))?)(((\/(?:[^?#](?![^?#\/]*\.[^?#\/.]+(?:[?#]|$)))*\/?)?([^?#\/  ]*))(?:\?([^#]*))?(?:#(.*))?)/
   }
 };
 
 function getParameterByName(name) {
-    return parseUri(location.search).queryKey[name];
-}
-
-window.getParameterByName = getParameterByName;
-
-function formatString(string, arguments) {
-    // formats string using an object
-    // formatString("hi {name}!", {name: "kiwi"}) -> "hi kiwi!"
-    var type = typeof arguments[0];
-
-    for (var r in arguments) {
-        string = string.replace(new RegExp("\\{" + r + "\\}", "gi"), arguments[r]);
-    }
-
-  return string;
+  return parseUri(window.location.search).queryKey[name];
 }
 
 module.exports = {
-  getParameterByName: getParameterByName,
-  formatString: formatString
+  getParameterByName: getParameterByName
 };
 
 },{}],5:[function(_dereq_,module,exports){

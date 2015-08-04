@@ -29,8 +29,8 @@ var webSocket = require("ws");
 // inside the callback, this refers to the channel.
 // channel.onConnection(callback);
 function Channel (config) {
-    var that                 = this;
-    this.listeners           = Object.create(null);
+    var that = this;
+    this.listeners = Object.create(null);
     this.connectionListeners = [];
 
     function onMessage (message) {
@@ -63,16 +63,16 @@ function Channel (config) {
     // on the server side, a channel gets passed an HttpServer, while on the client side it gets passed a port.
     // there are small distinctions to make between the server and the client
     // the server requires a different websocket constructor, and it talks to multiple clients instead of one.
-    if (typeof config === "object") {
-        this.websocket = new webSocket.Server({server: config});
-        this.type = "server";
-    } else if (typeof config === "number") {
-        this.websocket = new webSocket("ws://localhost:" + config + "/editor/");
-        this.type = "client";
+    if (config.type === Channel.server) {
+        this.websocket = new webSocket.Server({server: config.httpServer});
+        this.type = Channel.server;
+    } else if (config.type === Channel.client) {
+        this.websocket = new webSocket("ws://localhost:" + config.port + "/editor/");
+        this.type = Channel.client;
     }
 
     // for some reason, the websocket api differs on the client from the server
-    if (this.type === "server") {
+    if (this.type === Channel.server) {
         this.websocket.on("connection", onNewConnection);
     } else {
         this.websocket.open = onNewConnection;
@@ -93,11 +93,11 @@ Channel.prototype.send = function (messageType, data) {
     var message;
 
     data.type = messageType;
-    message   = JSON.stringify(data);
+    message = JSON.stringify(data);
 
     // on the server, send to all clients
     // on the client, send to the server
-    if (this.type === "server") {
+    if (this.type === Channel.server) {
         this.websocket.clients.forEach(function (client) {
             client.send(message);
         });
@@ -109,5 +109,8 @@ Channel.prototype.send = function (messageType, data) {
 Channel.prototype.onConnection = function(listener) {
     this.connectionListeners.push(listener);
 };
+
+Channel.server = "server";
+Channel.client = "client";
 
 module.exports = Channel;
