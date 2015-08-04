@@ -7,8 +7,7 @@ var onChangeTimeout = 250;
 
 var options = {};
 var codeMirror;  // TODO: Get rid of this global.
-
-var fileLoader = createFileLoader(Moonchild, Moonchild.getChannel());
+var channel = Moonchild.getChannel();
 
 // Private helpers
 // ---------------
@@ -90,3 +89,13 @@ Editor.prototype.insertText = function(offset, text) {
 Editor.prototype.replaceNodeText = function(node, text) {
   this.replaceRange(esLocToCm(node.loc.start), esLocToCm(node.loc.end), text);
 };
+
+Editor.prototype.setFileContents = function (content) {
+  this._codeMirror.setValue(content);
+  Moonchild.onChange();
+};
+
+//---- File loading and saving logic ----\\
+channel.on("fileLoad", function (messageData) {
+  Moonchild.getEditor().setFileContents(messageData.content);
+});

@@ -1,72 +1,115 @@
 !function(e){if("object"==typeof exports)module.exports=e();else if("function"==typeof define&&define.amd)define(e);else{var o;"undefined"!=typeof window?o=window:"undefined"!=typeof global?o=global:"undefined"!=typeof self&&(o=self),o.Moonchild=e()}}(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);throw new Error("Cannot find module '"+o+"'")}var f=n[o]={exports:{}};t[o][0].call(f.exports,function(e){var n=t[o][1][e];return s(n?n:e)},f,f.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(_dereq_,module,exports){
-var WebSocketLib = _dereq_('ws');
-var util         = _dereq_('./util');
+var webSocket = _dereq_("ws");
 
-function createChannel(port) {
-  // add listener from server
-  // channel.on("eventName", callback)
-  // send stuff to server
-  // channel.send("eventName", data)
+// A simple websocket abstraction using a emitter/observer pattern
+// The api is the same on both the server and the client, but differs in functionality
+//
+// On the server, channel.send sends the object to all connected clients, while on the client,
+// it of course only sends the object to the server
+//
+// channel.send("type", dataObject);
+// channel.  on("type", function (receivedDataObject) {...});
+//
+// on the client, pass a port (integer, not string)
+// on the server, pass an HttpServer
+// var channel = new Channel(port || HttpServer);
+//
+// // client
+// channel.on("ping", function (data) {
+//     data.content === "hi there";
+//     channel.send("pong", {content: "hello", ...});
+// });
+//
+// // server
+// channel.on("pong", function (data) {
+//     data.content === "hello";
+//     channel.send("ping", {content: "hi there", ...});
+// });
+//
+// Additionally, you can listen to the websocket's onConnection event
+// inside the callback, this refers to the channel.
+// channel.onConnection(callback);
+function Channel (config) {
+    var that                 = this;
+    this.listeners           = Object.create(null);
+    this.connectionListeners = [];
 
-  var channel   = Object.create(null);
+    function onMessage (message) {
+        var data = JSON.parse(message.data);
+        var type = data.type;
 
-  var url       = util.formatString("ws://localhost:{port}/editor/", {port: port});
-  var ws        = new WebSocketLib(url);
-  var listeners = {};
-
-  console.log("Websocket connecting to %s", url);
-
-  ws.onmessage = function (message) {
-    // Doesn't handle cyclic values
-    var data = JSON.parse(message.data);
-
-    // expects "data" to have .type
-    var type = data.type;
-
-    if (type in listeners) {
-      listeners[type].forEach(function (listener) {
-        listener(data);
-      });
-    } else {
-      console.log(util.formatString("The server is shouting '{type}'! But no-one is there to hear him...", {type: type}));
+        if (type in that.listeners) {
+            that.listeners[type].forEach(function (listener) {
+                listener(data);
+            });
+        } else {
+            console.log("Received a message with type '" + type + "' that's not being listened for.");
+        }
     }
-  };
 
-  ws.onopen = function () {
-    console.log("open!");
-  };
+    function onNewConnection(connection) {
+        console.log("New websocket connection");
+        that.connectionListeners.forEach(function (connectionListener) {
+            connectionListener.call(that, connection);
+        });
 
-  // handle ws.on('error') here later..
-  // ws.onerror = function (error) {
-  //
-  // };
-
-  channel.on = function (messageType, callback) {
-    if (messageType in listeners) {
-      listeners[messageType].push(callback);
-    } else {
-      listeners[messageType] = [callback];
+        // the client is already listening for messages,
+        if (that.type === "server") {
+            connection.on("message", onMessage);
+        } else {
+            console.log(connection);
+        }
     }
-  };
 
-  channel.send = function (messageType, data) {
-    var message;
-    data.type = messageType;
+    // on the server side, a channel gets passed an HttpServer, while on the client side it gets passed a port.
+    // there are small distinctions to make between the server and the client
+    // the server requires a different websocket constructor, and it talks to multiple clients instead of one.
+    if (typeof config === "object") {
+        this.websocket = new webSocket.Server({server: config});
+        this.type = "server";
+    } else if (typeof config === "number") {
+        this.websocket = new webSocket("ws://localhost:" + config + "/editor/");
+        this.type = "client";
+    }
 
-    // Doesn't handle cyclic values
-    message = JSON.stringify(data);
+    // for some reason, there is an api difference between the client and the server websocket.
+    if (this.type === "server") {
+        this.websocket.on("connection", onNewConnection);
+    } else {
+        this.websocket.open = onNewConnection;
+    }
 
-    ws.send(message);
-  };
-
-  return channel;
+    this.websocket.onmessage = onMessage;
 }
 
-module.exports = {
-  createChannel: createChannel
+Channel.prototype.on = function (messageType, callback) {
+    if (messageType in this.listeners) {
+        this.listeners[messageType].push(callback);
+    } else {
+        this.listeners[messageType] = [callback];
+    }
 };
 
-},{"./util":4,"ws":9}],2:[function(_dereq_,module,exports){
+Channel.prototype.send = function (messageType, data) {
+    var message;
+    data.type = messageType;
+    message   = JSON.stringify(data);
+
+    if (this.type === "server") {
+        this.websocket.clients.forEach(function (client) {
+            client.send(message);
+        });
+    } else {
+        this.websocket.send(message);
+    }
+};
+
+Channel.prototype.onConnection = function(listener) {
+    this.connectionListeners.push(listener);
+};
+
+module.exports = Channel;
+},{"ws":9}],2:[function(_dereq_,module,exports){
 'use strict';
 
 var _ = _dereq_('underscore'),
@@ -171,22 +214,25 @@ module.exports = {
 },{"esprima":6,"estraverse":7,"underscore":8}],3:[function(_dereq_,module,exports){
 'use strict';
 
-var _ = _dereq_('underscore'),
-    parser = _dereq_('./metadata'),
-    estraverse = _dereq_('estraverse'),
-    expanders = _dereq_('../third_party/expanders'),
-    util = _dereq_('./util.js'),
-    createChannel = _dereq_('./channel.js').createChannel;
+var _                = _dereq_('underscore');
+var parser           = _dereq_('./metadata');
+var estraverse       = _dereq_('estraverse');
+var expanders        = _dereq_('../third_party/expanders');
+var util             = _dereq_('./util');
+var Channel          = _dereq_('../common/channel');
 
-var globalHooks = {},
-    globalExtensions = {},
-    globalEditor = {};
+var globalHooks      = {};
+var globalExtensions = {};
+var globalEditor     = {};
 
-var port = util.getParameterByName("port") || 8080;
-var channel = createChannel(port);
+var portParam        = parseInt(util.getParameterByName("port"), 10);
+// check for invalid ports passed, if an invalid port was passed, use the default port 8080
+var port             = isNaN(portParam) ? 8080 : portParam;
 
-var widgetExpander = expanders.createExpander('displayWidget');
-var exportsExpander = expanders.createExpander('extensionId');
+var channel          = new Channel(port);
+
+var widgetExpander   = expanders.createExpander('displayWidget');
+var exportsExpander  = expanders.createExpander('extensionId');
 
 // Encapsulates the extension API that is provided to a single extension.
 function Extension(id) {
@@ -333,17 +379,6 @@ function applySafely(func, args) {
   }
 }
 
-function runDisplayHooks(tree) {
-  // Run the display hooks.
-  // TODO: This should be moved into a function that can be invoked by the
-  // editor plugin.
-  var hookArgs = getHookArgs(tree);
-  invokeHook('display', hookArgs);
-
-  // Run the render hooks.
-  invokeHook('render', hookArgs);
-}
-
 function onChange(newValue) {
   var tree;
 
@@ -354,7 +389,11 @@ function onChange(newValue) {
     return;
   }
 
-  runDisplayHooks(tree);
+  var hookArgs = getHookArgs(tree);
+  invokeHook('display', hookArgs);
+
+  // Run the render hooks.
+  invokeHook('render', hookArgs);
 }
 
 function setEditor(editor) {
@@ -370,12 +409,6 @@ function getChannel() {
   return channel;
 }
 
-function poke() {
-  // poke invoked onChange, this can be used to update Moonchild when
-  // text was set in a non-standard way
-  onChange();
-}
-
 module.exports = {
   on: _.partial(addHook, null, globalHooks),
   onChange: onChange,  // TODO: Get rid of this.
@@ -384,26 +417,55 @@ module.exports = {
   traverse: estraverse.traverse,
   setEditor: setEditor,
   getEditor: getEditor,
-  poke: poke,
   getChannel: getChannel
 };
 
-},{"../third_party/expanders":10,"./channel.js":1,"./metadata":2,"./util.js":4,"estraverse":7,"underscore":8}],4:[function(_dereq_,module,exports){
+},{"../common/channel":1,"../third_party/expanders":10,"./metadata":2,"./util":4,"estraverse":7,"underscore":8}],4:[function(_dereq_,module,exports){
+// taken from
+// http://blog.stevenlevithan.com/archives/parseuri
+function parseUri (str) {
+  var o   = parseUri.options,
+      m   = o.parser[o.strictMode ? "strict" : "loose"].exec(str),
+      uri = {},
+      i   = 14;
+
+  while (i--) uri[o.key[i]] = m[i] || "";
+
+  uri[o.q.name] = {};
+  uri[o.key[12]].replace(o.q.parser, function ($0, $1, $2) {
+    if ($1) uri[o.q.name][$1] = $2;
+  });
+
+  return uri;
+};
+
+parseUri.options = {
+  strictMode: false,
+  key: ["source","protocol","authority","userInfo","user","password","host","port","relative","path","directory","file","query","anchor"],
+  q:   {
+    name:   "queryKey",
+    parser: /(?:^|&)([^&=]*)=?([^&]*)/g
+  },
+  parser: {
+    strict: /^(?:([^:\/?#]+):)?(?:\/\/((?:(([^:@]*):?([^:@]*))?@)?([^:\/?#]*)(?::(\d*))?))?((((?:[^?#\/]*\/)*)([^?#]*))(?:\?([^#]*))?(?:#(.*))?)/,
+    loose:  /^(?:(?![^:@]+:[^:@\/]*@)([^:\/?#.]+):)?(?:\/\/)?((?:(([^:@]*):?([^:@]*))?@)?([^:\/?#]*)(?::(\d*))?)(((\/(?:[^?#](?![^?#\/]*\.[^?#\/.]+(?:[?#]|$)))*\/?)?([^?#\/]*))(?:\?([^#]*))?(?:#(.*))?)/
+  }
+};
+
 function getParameterByName(name) {
-    name = name.replace(/[\[]/, "\\[").replace(/[\]]/, "\\]");
-    var regex = new RegExp("[\\?&]" + name + "=([^&#]*)"),
-        results = regex.exec(location.search);
-    return results === null ? "" : decodeURIComponent(results[1].replace(/\+/g, " "));
+    return parseUri(location.search).queryKey[name];
 }
 
-function formatString(string, arguments) {
-  // formats string using an object
-  // formatString("hi {name}!", {name: "kiwi"}) -> "hi kiwi!"
-  var type = typeof arguments[0];
+window.getParameterByName = getParameterByName;
 
-  for (var r in arguments) {
-    string = string.replace(new RegExp("\\{" + r + "\\}", "gi"), arguments[r]);
-  }
+function formatString(string, arguments) {
+    // formats string using an object
+    // formatString("hi {name}!", {name: "kiwi"}) -> "hi kiwi!"
+    var type = typeof arguments[0];
+
+    for (var r in arguments) {
+        string = string.replace(new RegExp("\\{" + r + "\\}", "gi"), arguments[r]);
+    }
 
   return string;
 }

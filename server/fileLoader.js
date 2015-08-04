@@ -6,7 +6,7 @@ function sendFile(channel, filePath) {
       console.log(err);
     } else {
       console.log("sending file %s to editor!", filePath);
-      channel.sendToAll("fileLoad", {content: data, filePath: filePath});
+      channel.send("fileLoad", {content: data, filePath: filePath});
     }
   });
 }
