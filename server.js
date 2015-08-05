@@ -1,12 +1,12 @@
-var Server       = require('node-static').Server;
-var http         = require('http');
-var Channel      = require('./common/channel');
-var onConnection = require("./server/fileLoader").onConnection;
+var Server = require('node-static').Server;
+var http = require('http');
+var Channel = require('./lib/channel');
+var onConnection = require('./server/fileLoader').onConnection;
 
-var port         = 8080;
-var fileServer   = new Server('.');
-var server       = http.createServer(handleRequest);
-var channel      = new Channel({httpServer: server, type: Channel.server});
+var port = 8080;
+var fileServer = new Server('.');
+var server = http.createServer(handleRequest);
+var channel = new Channel({httpServer: server, type: Channel.server});
 
 channel.onConnection(onConnection);
 

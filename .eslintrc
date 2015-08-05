@@ -8,8 +8,7 @@
   "globals": {
     "console": true,
     "module": true,
-    "require": true,
-    "window": true
+    "require": true
   },
   "rules": {
     // Enforce "one true brace style", allowing start and end braces to be
@@ -58,6 +57,6 @@
 
     "yoda": [2, "never", {"exceptRange": true}],
 
-    "no-regex-spaces": 0
+    "no-console": 0
   }
 }
