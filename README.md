@@ -5,7 +5,11 @@ kinds of programming interfaces. It's based on [CodeMirror][cm], a web-based
 text editor. Moonchild adds a framework which makes it easy to create plugins
 which modify and extend the source code presentation.
 
+You can watch a [15-minute demo of Moonchild](http://vimeo.com/106498564)
+that was presented at the [Future Programming Workshop at SPLASH 2014][fpw], or the [5-minute highlight reel](https://vimeo.com/106578509).
+
 [cm]: http://codemirror.net/
+[fpw]: http://www.future-programming.org/program.html
 
 Plugins (written in HTML and JavaScript) consume the AST, and can produce DOM
 nodes that modify or replace the text of any of the AST nodes. Plugins can not
@@ -42,11 +46,6 @@ JavaScript, making it much more approachable and accessible than some
 previous frameworks.
 
 [barista]: https://faculty.washington.edu/ajko/barista.shtml
-
-You can also check out a [15-minute demo of Moonchild](http://vimeo.com/106498564)
-that was presented at the [Future Programming Workshop at SPLASH 2014][fpw].
-
-[fpw]: http://www.future-programming.org/program.html
 
 ## Basic Setup
 
