@@ -1,5 +1,7 @@
 # Moonchild
 
+[![Live demo](https://img.shields.io/badge/Live%20demo-%E2%86%92-9D6EB3.svg?style=flat-square)](https://harc.github.io/moonchild/editor/)
+
 Moonchild brings source code to life. It's a toolkit for experimenting with new
 kinds of programming interfaces. It's based on [CodeMirror][cm], a web-based
 text editor. Moonchild adds a framework which makes it easy to create plugins
