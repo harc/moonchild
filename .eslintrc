@@ -8,7 +8,7 @@
   "globals": {
     "console": true,
     "module": true,
-    "require": true,
+    "require": true
   },
   "rules": {
     // Enforce "one true brace style", allowing start and end braces to be
@@ -55,6 +55,8 @@
     // Force IIFEs to be wrapped in parentheses.
     "wrap-iife": [2, "inside"],
 
-    "yoda": [2, "never", {"exceptRange": true}]
+    "yoda": [2, "never", {"exceptRange": true}],
+
+    "no-console": 0
   }
 }

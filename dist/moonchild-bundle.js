@@ -1,4 +1,121 @@
 !function(e){if("object"==typeof exports)module.exports=e();else if("function"==typeof define&&define.amd)define(e);else{var o;"undefined"!=typeof window?o=window:"undefined"!=typeof global?o=global:"undefined"!=typeof self&&(o=self),o.Moonchild=e()}}(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);throw new Error("Cannot find module '"+o+"'")}var f=n[o]={exports:{}};t[o][0].call(f.exports,function(e){var n=t[o][1][e];return s(n?n:e)},f,f.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(_dereq_,module,exports){
+var webSocket = _dereq_("ws");
+
+// A simple websocket abstraction using a emitter/observer pattern
+// The api is the same on both the server and the client, but differs in functionality
+//
+// On the server, channel.send sends the object to all connected clients, while on the client,
+// it of course only sends the object to the server
+//
+// channel.send("type", dataObject);
+// channel.  on("type", function (receivedDataObject) {...});
+//
+// on the client, pass a port (integer, not string)
+// on the server, pass an HttpServer
+// var channel = new Channel(port || HttpServer);
+//
+// // client
+// channel.on("ping", function (data) {
+//     data.content === "hi there";
+//     channel.send("pong", {content: "hello", ...});
+// });
+//
+// // server
+// channel.on("pong", function (data) {
+//     data.content === "hello";
+//     channel.send("ping", {content: "hi there", ...});
+// });
+//
+// Additionally, you can listen to the websocket's onConnection event
+// inside the callback, this refers to the channel.
+// channel.onConnection(callback);
+function Channel (config) {
+    var that = this;
+    this.listeners = Object.create(null);
+    this.connectionListeners = [];
+
+    function onMessage (message) {
+        var data = JSON.parse(message.data);
+        var type = data.type;
+
+        if (type in that.listeners) {
+            that.listeners[type].forEach(function (listener) {
+                listener(data);
+            });
+        } else {
+            console.log("Received a message with type '" + type + "' that's not being listened for.");
+        }
+    }
+
+    function onNewConnection(connection) {
+        console.log("New websocket connection");
+        that.connectionListeners.forEach(function (connectionListener) {
+            connectionListener.call(that, connection);
+        });
+
+        // the client is already listening for messages,
+        if (that.type === "server") {
+            connection.on("message", onMessage);
+        } else {
+            console.log(connection);
+        }
+    }
+
+    // on the server side, a channel gets passed an HttpServer, while on the client side it gets passed a port.
+    // there are small distinctions to make between the server and the client
+    // the server requires a different websocket constructor, and it talks to multiple clients instead of one.
+    if (config.type === Channel.server) {
+        this.websocket = new webSocket.Server({server: config.httpServer});
+        this.type = Channel.server;
+    } else if (config.type === Channel.client) {
+        this.websocket = new webSocket("ws://localhost:" + config.port + "/editor/");
+        this.type = Channel.client;
+    }
+
+    // for some reason, the websocket api differs on the client from the server
+    if (this.type === Channel.server) {
+        this.websocket.on("connection", onNewConnection);
+    } else {
+        this.websocket.open = onNewConnection;
+    }
+
+    this.websocket.onmessage = onMessage;
+}
+
+Channel.prototype.on = function (messageType, callback) {
+    if (messageType in this.listeners) {
+        this.listeners[messageType].push(callback);
+    } else {
+        this.listeners[messageType] = [callback];
+    }
+};
+
+Channel.prototype.send = function (messageType, data) {
+    var message;
+
+    data.type = messageType;
+    message = JSON.stringify(data);
+
+    // on the server, send to all clients
+    // on the client, send to the server
+    if (this.type === Channel.server) {
+        this.websocket.clients.forEach(function (client) {
+            client.send(message);
+        });
+    } else {
+        this.websocket.send(message);
+    }
+};
+
+Channel.prototype.onConnection = function(listener) {
+    this.connectionListeners.push(listener);
+};
+
+Channel.server = "server";
+Channel.client = "client";
+
+module.exports = Channel;
+},{"ws":9}],2:[function(_dereq_,module,exports){
 'use strict';
 
 var _ = _dereq_('underscore'),
@@ -100,17 +217,25 @@ module.exports = {
   parse: parse
 };
 
-},{"esprima":4,"estraverse":5,"underscore":6}],2:[function(_dereq_,module,exports){
+},{"esprima":6,"estraverse":7,"underscore":8}],3:[function(_dereq_,module,exports){
 'use strict';
 
-var _ = _dereq_('underscore'),
-    parser = _dereq_('./metadata'),
-    estraverse = _dereq_('estraverse'),
-    expanders = _dereq_('../third_party/expanders');
+var _ = _dereq_('underscore');
+var parser = _dereq_('./metadata');
+var estraverse = _dereq_('estraverse');
+var expanders = _dereq_('../third_party/expanders');
+var util = _dereq_('./util');
+var Channel = _dereq_('../common/channel');
 
-var globalHooks = {},
-    globalExtensions = {},
-    globalEditor = {};
+var globalHooks = {};
+var globalExtensions = {};
+var globalEditor = {};
+
+var portParam = parseInt(util.getParameterByName('port'), 10);
+// check for invalid ports passed, if an invalid port was passed, use the default port 8080
+var port = isNaN(portParam) ? 8080 : portParam;
+
+var channel = new Channel({port: port, type: Channel.client});
 
 var widgetExpander = expanders.createExpander('displayWidget');
 var exportsExpander = expanders.createExpander('extensionId');
@@ -270,9 +395,6 @@ function onChange(newValue) {
     return;
   }
 
-  // Run the display hooks.
-  // TODO: This should be moved into a function that can be invoked by the
-  // editor plugin.
   var hookArgs = getHookArgs(tree);
   invokeHook('display', hookArgs);
 
@@ -289,6 +411,10 @@ function getEditor() {
   return globalEditor;
 }
 
+function getChannel() {
+  return channel;
+}
+
 module.exports = {
   on: _.partial(addHook, null, globalHooks),
   onChange: onChange,  // TODO: Get rid of this.
@@ -296,13 +422,57 @@ module.exports = {
   registerExtension: registerExtension,
   traverse: estraverse.traverse,
   setEditor: setEditor,
-  getEditor: getEditor
+  getEditor: getEditor,
+  getChannel: getChannel
 };
 
-},{"../third_party/expanders":7,"./metadata":1,"estraverse":5,"underscore":6}],3:[function(_dereq_,module,exports){
+},{"../common/channel":1,"../third_party/expanders":10,"./metadata":2,"./util":4,"estraverse":7,"underscore":8}],4:[function(_dereq_,module,exports){
+'use strict';
+
+// parseUri 1.2.2
+// (c) Steven Levithan <stevenlevithan.com>
+// MIT License
+function parseUri (str) {
+  var o = parseUri.options,
+      m = o.parser[o.strictMode ? 'strict' : 'loose'].exec(str),
+      uri = {},
+      i = 14;
+
+  while (i--) uri[o.key[i]] = m[i] || '';
+
+  uri[o.q.name] = {};
+  uri[o.key[12]].replace(o.q.parser, function ($0, $1, $2) {
+    if ($1) uri[o.q.name][$1] = $2;
+  });
+
+  return uri;
+}
+
+parseUri.options = {
+  strictMode: false,
+  key: ['source', 'protocol', 'authority', 'userInfo', 'user', 'password', 'host', 'port', 'relative', 'path', 'directory', 'file', 'query', 'anchor'],
+  q: {
+    name: 'queryKey',
+    parser: /(?:^|&)([^&=]*)=?([^&]*)/g
+  },
+  parser: {
+    strict: /^(?:([^:\/?#]+):)?(?:\/\/((?:(([^:@]*):?([^:@]*))?@)?([^:\/?#]*)(?::(\d*))?))?((((?:[^?#\/]*\/)*)([^?#]*))(?:\?([^#]*))?(?:#(.*))?)/,
+    loose: /^(?:(?![^:@]+:[^:@\/]*@)([^:\/?#.]+):)?(?:\/\/)?((?:(([^:@]*):?([^:@]*))?@)?([^:\/?#]*)(?::(\d*))?)(((\/(?:[^?#](?![^?#\/]*\.[^?#\/.]+(?:[?#]|$)))*\/?)?([^?#\/  ]*))(?:\?([^#]*))?(?:#(.*))?)/
+  }
+};
+
+function getParameterByName(name) {
+  return parseUri(window.location.search).queryKey[name];
+}
+
+module.exports = {
+  getParameterByName: getParameterByName
+};
+
+},{}],5:[function(_dereq_,module,exports){
 module.exports = _dereq_('./lib/moonchild');
 
-},{"./lib/moonchild":2}],4:[function(_dereq_,module,exports){
+},{"./lib/moonchild":3}],6:[function(_dereq_,module,exports){
 /*
   Copyright (C) 2013 Ariya Hidayat <ariya.hidayat@gmail.com>
   Copyright (C) 2013 Thaddee Tyl <thaddee.tyl@gmail.com>
@@ -4134,7 +4304,7 @@ parseStatement: true, parseSourceElement: true */
 }));
 /* vim: set sw=4 ts=4 et tw=80 : */
 
-},{}],5:[function(_dereq_,module,exports){
+},{}],7:[function(_dereq_,module,exports){
 /*
   Copyright (C) 2012-2013 Yusuke Suzuki <utatane.tea@gmail.com>
   Copyright (C) 2012 Ariya Hidayat <ariya.hidayat@gmail.com>
@@ -4825,7 +4995,7 @@ parseStatement: true, parseSourceElement: true */
 }));
 /* vim: set sw=4 ts=4 et tw=80 : */
 
-},{}],6:[function(_dereq_,module,exports){
+},{}],8:[function(_dereq_,module,exports){
 //     Underscore.js 1.8.3
 //     http://underscorejs.org
 //     (c) 2009-2015 Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
@@ -6375,7 +6545,52 @@ parseStatement: true, parseSourceElement: true */
   }
 }.call(this));
 
-},{}],7:[function(_dereq_,module,exports){
+},{}],9:[function(_dereq_,module,exports){
+
+/**
+ * Module dependencies.
+ */
+
+var global = (function() { return this; })();
+
+/**
+ * WebSocket constructor.
+ */
+
+var WebSocket = global.WebSocket || global.MozWebSocket;
+
+/**
+ * Module exports.
+ */
+
+module.exports = WebSocket ? ws : null;
+
+/**
+ * WebSocket constructor.
+ *
+ * The third `opts` options object gets ignored in web browsers, since it's
+ * non-standard, and throws a TypeError if passed to the constructor.
+ * See: https://github.com/einaros/ws/issues/227
+ *
+ * @param {String} uri
+ * @param {Array} protocols (optional)
+ * @param {Object) opts (optional)
+ * @api public
+ */
+
+function ws(uri, protocols, opts) {
+  var instance;
+  if (protocols) {
+    instance = new WebSocket(uri, protocols);
+  } else {
+    instance = new WebSocket(uri);
+  }
+  return instance;
+}
+
+if (WebSocket) ws.prototype = WebSocket.prototype;
+
+},{}],10:[function(_dereq_,module,exports){
 (function (global){
 !function(e){if("object"==typeof exports&&"undefined"!=typeof module)module.exports=e();else if("function"==typeof define&&define.amd)define([],e);else{var f;"undefined"!=typeof window?f=window:"undefined"!=typeof global?f=global:"undefined"!=typeof self&&(f=self),f.expanders=e()}}(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof _dereq_=="function"&&_dereq_;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof _dereq_=="function"&&_dereq_;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(_dereq_,module,exports){
 /* global -Symbol, -WeakMap */
@@ -7577,6 +7792,6 @@ defineProperty(WeakMapPoly.prototype, toStringTagSymbol, d('c', 'WeakMap'));
 },{"./is-native-implemented":20,"d":22,"es5-ext/object/set-prototype-of":38,"es5-ext/object/valid-object":42,"es5-ext/object/valid-value":43,"es6-iterator/for-of":49,"es6-iterator/get":50,"es6-symbol":2}]},{},[1])(1)
 });
 }).call(this,typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}]},{},[3])
-(3)
+},{}]},{},[5])
+(5)
 });
